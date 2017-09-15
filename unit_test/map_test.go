@@ -1,7 +1,7 @@
 package unit_test
 
 import (
-	"bolsa/gadgets"
+	"bolsa/gadgets/piezas"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -12,7 +12,7 @@ type _mapTester struct{}
 func (anonymous *_mapTester) testWithError(t *testing.T) {
 	// Type mismatched then do nothing
 	input := []int64{1, 2, 3, 4, 5, 6, 7, 8, 99}
-	r := gadgets.Map(input,
+	r := piezas.Map(input,
 		func(k int) int {
 			return k * k
 		}, true)
@@ -23,7 +23,7 @@ func (anonymous *_mapTester) testWithError(t *testing.T) {
 }
 
 func (anonymous *_mapTester) testWithArray(t *testing.T) {
-	r := gadgets.Map([9]int64{1, 2, 3, 4, 5, 6, 7, 8, 99},
+	r := piezas.Map([9]int64{1, 2, 3, 4, 5, 6, 7, 8, 99},
 		func(k int64) int64 {
 			return k * k
 		}, true)
@@ -34,7 +34,7 @@ func (anonymous *_mapTester) testWithArray(t *testing.T) {
 		assert.Equal(t, v, r[index])
 	}
 
-	r = gadgets.Map([9]int64{1, 2, 3, 4, 5, 6, 7, 8, 99},
+	r = piezas.Map([9]int64{1, 2, 3, 4, 5, 6, 7, 8, 99},
 		func(k int64) int64 {
 			return k * k
 		}, false)
@@ -53,7 +53,7 @@ func (anonymous *_mapTester) testWithArray(t *testing.T) {
 }
 
 func (anonymous *_mapTester) testWithSlice(t *testing.T) {
-	r := gadgets.Map([]int64{1, 2, 3, 4, 5, 6, 7, 8, 99},
+	r := piezas.Map([]int64{1, 2, 3, 4, 5, 6, 7, 8, 99},
 		func(k int64) int64 {
 			return k * k
 		}, true)
@@ -64,7 +64,7 @@ func (anonymous *_mapTester) testWithSlice(t *testing.T) {
 		assert.Equal(t, v, r[index])
 	}
 
-	r = gadgets.Map([]int64{1, 2, 3, 4, 5, 6, 7, 8, 99},
+	r = piezas.Map([]int64{1, 2, 3, 4, 5, 6, 7, 8, 99},
 		func(k int64) int64 {
 			return k * k
 		}, false)
@@ -83,7 +83,7 @@ func (anonymous *_mapTester) testWithSlice(t *testing.T) {
 }
 
 func (anonymous *_mapTester) testWithSinglePara(t *testing.T) {
-	r := gadgets.Map(99,
+	r := piezas.Map(99,
 		func(k int) int {
 			return k * k
 		}, true)
@@ -94,7 +94,7 @@ func (anonymous *_mapTester) testWithSinglePara(t *testing.T) {
 		assert.Equal(t, v, r[index])
 	}
 
-	r = gadgets.Map([]int{99},
+	r = piezas.Map([]int{99},
 		func(k int) int {
 			return k * k
 		}, false)

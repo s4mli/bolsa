@@ -1,7 +1,7 @@
 package unit_test
 
 import (
-	"bolsa/gadgets"
+	"bolsa/gadgets/piezas"
 	"fmt"
 	"strconv"
 	"testing"
@@ -13,7 +13,7 @@ type _waterfallTester struct{}
 
 func (anonymous *_waterfallTester) testWithError(t *testing.T) {
 	// Error would NOT stop the waterfall but will be piped all the way down to the end ! ?
-	gadgets.NewWaterfall(gadgets.Tasks{
+	piezas.NewWaterfall(piezas.Tasks{
 		func(a ...int) (int, int, error) {
 			return 0, 0, fmt.Errorf("Lucy&Lily")
 		},
@@ -27,7 +27,7 @@ func (anonymous *_waterfallTester) testWithError(t *testing.T) {
 }
 
 func (anonymous *_waterfallTester) testWithVariadicParas(t *testing.T) {
-	gadgets.NewWaterfall(gadgets.Tasks{
+	piezas.NewWaterfall(piezas.Tasks{
 		func(a ...int) (int, int, error) {
 			total := 1
 			count := 0
@@ -46,7 +46,7 @@ func (anonymous *_waterfallTester) testWithVariadicParas(t *testing.T) {
 }
 
 func (anonymous *_waterfallTester) testWithFixedParas(t *testing.T) {
-	gadgets.NewWaterfall(gadgets.Tasks{
+	piezas.NewWaterfall(piezas.Tasks{
 		func(a int) (int, string, error) {
 			return a * a, strconv.Itoa(a), nil
 		},
@@ -59,7 +59,7 @@ func (anonymous *_waterfallTester) testWithFixedParas(t *testing.T) {
 }
 
 func (anonymous *_waterfallTester) testWithCombination(t *testing.T) {
-	gadgets.NewWaterfall(gadgets.Tasks{
+	piezas.NewWaterfall(piezas.Tasks{
 		func(a int) (int, string, error) {
 			return a * a, strconv.Itoa(a), nil
 		},
@@ -69,7 +69,7 @@ func (anonymous *_waterfallTester) testWithCombination(t *testing.T) {
 		func(a string) {
 			assert.Equal(t, "10000100", a)
 
-			gadgets.NewWaterfall(gadgets.Tasks{
+			piezas.NewWaterfall(piezas.Tasks{
 				func(a string) (string, error) {
 					return a + a, nil
 				},

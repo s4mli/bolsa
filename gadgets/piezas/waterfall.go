@@ -1,4 +1,4 @@
-package gadgets
+package piezas
 
 import (
 	"fmt"
