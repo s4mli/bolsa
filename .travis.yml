@@ -13,6 +13,8 @@ notifications:
   email: false
 
 script:
+  - echo $GOPATH
+  - go list ./...
   - go fmt ./...
   - go vet $(go list ./... | grep -v /vendor/)
   - go test -v -race $(go list ./... | grep -v /vendor/)
