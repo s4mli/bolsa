@@ -65,4 +65,12 @@ func main() {
 			})
 		fmt.Println(callCount == len(input))
 	}
+	if true { // reduce
+		input := []int64{1, 2, 3, 4, 5, 6, 7, 8, 99, 1112, 213, 123, 542, 45, 56, 345, 623}
+		r := piezas.Reduce(input, 0,
+			func(k int64, memo int) int {
+				return memo + int(k)
+			})
+		fmt.Println(r)
+	}
 }
