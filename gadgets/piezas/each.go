@@ -58,7 +58,7 @@ func (anonymous *_each) digest(routines int, finished chan bool, done chan bool)
 
 func (anonymous *_each) chew(v visitor, routines int, finished chan bool, in chan reflect.Value) {
 	for i := 0; i < routines; i++ {
-		go func(in chan reflect.Value, finished chan bool, t tester) {
+		go func(in chan reflect.Value, finished chan bool, v visitor) {
 			for data := range in {
 				anonymous.apply(v, data)
 			}
