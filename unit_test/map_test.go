@@ -1,9 +1,9 @@
 package unit_test
 
 import (
-	"bolsa/gadgets/piezas"
 	"testing"
 
+	"github.com/samwooo/bolsa/gadgets/piezas"
 	"github.com/stretchr/testify/assert"
 )
 
