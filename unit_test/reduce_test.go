@@ -1,10 +1,10 @@
 package unit_test
 
 import (
-	"bolsa/gadgets/piezas"
 	"strconv"
 	"testing"
 
+	"github.com/samwooo/bolsa/gadgets/piezas"
 	"github.com/stretchr/testify/assert"
 )
 

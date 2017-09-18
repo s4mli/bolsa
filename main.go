@@ -1,10 +1,11 @@
 package main
 
 import (
-	"bolsa/gadgets/piezas"
 	"fmt"
 	"strconv"
 	"sync"
+
+	"github.com/samwooo/bolsa/gadgets/piezas"
 )
 
 func main() {
