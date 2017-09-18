@@ -14,6 +14,7 @@ notifications:
 
 script:
   - echo $GOPATH
+  - pwd
   - go list ./...
   - go fmt ./...
   - go vet $(go list ./... | grep -v /vendor/)
