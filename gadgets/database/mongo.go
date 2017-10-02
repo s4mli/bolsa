@@ -9,7 +9,7 @@ type Mongo struct {
 	DBName  string
 }
 
-func (ms *Mongo) WithCollection(collection string, f func(c *mgo.Collection) error) error {
+func (ms *Mongo) Query(collection string, f func(c *mgo.Collection) error) error {
 	s := ms.Session.Copy()
 	defer s.Close()
 	c := s.DB(ms.DBName).C(collection)
