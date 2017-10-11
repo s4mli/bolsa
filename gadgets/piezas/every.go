@@ -8,9 +8,12 @@ import (
 )
 
 type tester interface{} // a func can do checking and then return a boolean
-type _every struct{}
+type every struct {
+	routinesCount int
+	routinesDone  chan bool
+}
 
-func (anonymous *_every) apply(t tester, d reflect.Value) bool {
+func (myself *every) apply(t tester, d reflect.Value) bool {
 	fn := reflect.Indirect(reflect.ValueOf(t))
 	if fn.Kind() != reflect.Func {
 		err := fmt.Errorf("<< every >> Tester must be a Func, skip")
@@ -46,63 +49,67 @@ func (anonymous *_every) apply(t tester, d reflect.Value) bool {
 	return fn.Call([]reflect.Value{d})[0].Interface().(bool)
 }
 
-func (anonymous *_every) feed(data array, in chan reflect.Value) {
-	a := reflect.Indirect(reflect.ValueOf(data))
-	kind := a.Kind()
-	if kind != reflect.Array && kind != reflect.Slice {
-		in <- reflect.ValueOf(data)
-	} else {
-		for i := 0; i < a.Len(); i++ {
-			in <- a.Index(i)
+func (myself *every) feed(data array) <-chan reflect.Value {
+	in := make(chan reflect.Value, myself.routinesCount)
+	go func(myself *every, in chan<- reflect.Value) {
+		a := reflect.Indirect(reflect.ValueOf(data))
+		kind := a.Kind()
+		if kind != reflect.Array && kind != reflect.Slice {
+			in <- reflect.ValueOf(data)
+		} else {
+			for i := 0; i < a.Len(); i++ {
+				in <- a.Index(i)
+			}
 		}
-	}
-	close(in)
+		close(in)
+	}(myself, in)
+	return in
 }
 
-func (anonymous *_every) digest(routines int, finished chan bool, out chan bool) {
-	for i := 0; i < routines; i++ {
-		<-finished
-	}
-	close(out)
+func (myself *every) digest(out <-chan bool) bool {
+	done := make(chan bool)
+	go func(myself *every, out <-chan bool, done chan<- bool) {
+		result := true
+		for passed := range out {
+			result = result && passed
+		}
+		done <- result
+	}(myself, out, done)
+	return <-done
 }
 
-func (anonymous *_every) chew(t tester, routines int, finished chan bool, in chan reflect.Value, out chan bool) {
-	for i := 0; i < routines; i++ {
-		go func(in chan reflect.Value, out chan bool, finished chan bool, t tester) {
+func (myself *every) chew(in <-chan reflect.Value, t tester) <-chan bool {
+	out := make(chan bool, myself.routinesCount)
+	for i := 0; i < myself.routinesCount; i++ {
+		go func(myself *every, in <-chan reflect.Value, out chan<- bool, t tester) {
 			for data := range in {
-				passed := anonymous.apply(t, data)
+				passed := myself.apply(t, data)
 				out <- passed
 				if !passed {
 					break
 				}
 			}
-			finished <- true
-		}(in, out, finished, t)
-	}
-}
-
-func (anonymous *_every) outlet(out chan bool, done chan bool) {
-	result := true
-	for passed := range out {
-		result = result && passed
+			myself.routinesDone <- true
+		}(myself, in, out, t)
 	}
 
-	done <- result
+	go func(myself *every, out chan<- bool) {
+		for i := 0; i < myself.routinesCount; i++ {
+			<-myself.routinesDone
+		}
+		close(out)
+	}(myself, out)
+	return out
 }
 
 func Every(data array, t tester) bool {
 	start := time.Now()
 	routines := runtime.NumCPU()
-	in := make(chan reflect.Value, routines)
-	out := make(chan bool, routines)
-	finished := make(chan bool, routines)
-	done := make(chan bool)
-	anonymous := _every{}
-	go anonymous.feed(data, in)
-	go anonymous.chew(t, routines, finished, in, out)
-	go anonymous.digest(routines, finished, out)
-	go anonymous.outlet(out, done)
-	r := <-done
+	myself := every{
+		routines,
+		make(chan bool, routines)}
+
+	r := myself.digest(myself.chew(myself.feed(data), t))
 	fmt.Println("<< every >> Done in ", time.Since(start))
 	return r
 }

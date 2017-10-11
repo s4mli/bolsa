@@ -52,13 +52,17 @@ func (anonymous *_everyTester) testWithArray(t *testing.T) {
 }
 
 func (anonymous *_everyTester) testWithSlice(t *testing.T) {
-	r := piezas.Every([]int64{1, 2, 3, 4, 5, 6, 7, 8, 99},
+	input := []int64{1, 2, 3, 4, 5, 6, 7, 8, 99}
+	for i := 0; i < 9999999; i++ {
+		input = append(input, int64(i))
+	}
+	r := piezas.Every(input,
 		func(k int64) bool {
-			return k < 100
+			return k < 9999999+1
 		})
 	assert.Equal(t, true, r)
 
-	r = piezas.Every([]int64{1, 2, 3, 4, 5, 6, 7, 8, 99},
+	r = piezas.Every(input,
 		func(k int64) bool {
 			return k < 0
 		})
