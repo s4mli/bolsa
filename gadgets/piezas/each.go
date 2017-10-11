@@ -8,9 +8,12 @@ import (
 )
 
 type visitor interface{} // a func that visit each items
-type _each struct{}
+type each struct {
+	routinesCount int
+	routinesDone  chan bool
+}
 
-func (anonymous *_each) apply(v visitor, d reflect.Value) {
+func (myself *each) apply(v visitor, d reflect.Value) {
 	fn := reflect.Indirect(reflect.ValueOf(v))
 	if fn.Kind() != reflect.Func {
 		err := fmt.Errorf("<< each >> Visitor must be a Func, skip")
@@ -36,47 +39,53 @@ func (anonymous *_each) apply(v visitor, d reflect.Value) {
 	fn.Call([]reflect.Value{d})
 }
 
-func (anonymous *_each) feed(data array, in chan reflect.Value) {
-	a := reflect.Indirect(reflect.ValueOf(data))
-	kind := a.Kind()
-	if kind != reflect.Array && kind != reflect.Slice {
-		in <- reflect.ValueOf(data)
-	} else {
-		for i := 0; i < a.Len(); i++ {
-			in <- a.Index(i)
-		}
-	}
-	close(in)
-}
-
-func (anonymous *_each) digest(routines int, finished chan bool, done chan bool) {
-	for i := 0; i < routines; i++ {
-		<-finished
-	}
-	done <- true
-}
-
-func (anonymous *_each) chew(v visitor, routines int, finished chan bool, in chan reflect.Value) {
-	for i := 0; i < routines; i++ {
-		go func(in chan reflect.Value, finished chan bool, v visitor) {
-			for data := range in {
-				anonymous.apply(v, data)
+func (myself *each) feed(data array) <-chan reflect.Value {
+	in := make(chan reflect.Value, myself.routinesCount)
+	go func(data array, in chan<- reflect.Value) {
+		a := reflect.Indirect(reflect.ValueOf(data))
+		kind := a.Kind()
+		if kind != reflect.Array && kind != reflect.Slice {
+			in <- reflect.ValueOf(data)
+		} else {
+			for i := 0; i < a.Len(); i++ {
+				in <- a.Index(i)
 			}
-			finished <- true
-		}(in, finished, v)
+		}
+		close(in)
+	}(data, in)
+	return in
+}
+
+func (myself *each) digest() <-chan bool {
+	done := make(chan bool)
+	go func(myself *each, done chan<- bool) {
+		for i := 0; i < myself.routinesCount; i++ {
+			<-myself.routinesDone
+		}
+		done <- true
+	}(myself, done)
+	return done
+}
+
+func (myself *each) chew(in <-chan reflect.Value, v visitor) {
+	for i := 0; i < myself.routinesCount; i++ {
+		go func(myself *each, in <-chan reflect.Value, v visitor) {
+			for data := range in {
+				myself.apply(v, data)
+			}
+			myself.routinesDone <- true
+		}(myself, in, v)
 	}
 }
 
 func Each(data array, v visitor) {
 	start := time.Now()
 	routines := runtime.NumCPU()
-	in := make(chan reflect.Value, routines)
-	finished := make(chan bool, routines)
-	done := make(chan bool)
-	anonymous := _each{}
-	go anonymous.feed(data, in)
-	go anonymous.chew(v, routines, finished, in)
-	go anonymous.digest(routines, finished, done)
-	<-done
+	myself := each{
+		routines,
+		make(chan bool, routines)}
+
+	myself.chew(myself.feed(data), v)
+	<-myself.digest()
 	fmt.Println("<< each >> Done in ", time.Since(start))
 }
