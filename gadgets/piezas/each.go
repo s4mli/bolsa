@@ -7,14 +7,13 @@ import (
 	"time"
 )
 
-type visitor interface{} // a func that visit each items
 type each struct {
 	routinesCount int
 	routinesDone  chan bool
 }
 
-func (myself *each) apply(v visitor, d reflect.Value) {
-	fn := reflect.Indirect(reflect.ValueOf(v))
+func (myself *each) apply(f iterator, d reflect.Value) {
+	fn := reflect.Indirect(reflect.ValueOf(f))
 	if fn.Kind() != reflect.Func {
 		err := fmt.Errorf("<< each >> Visitor must be a Func, skip")
 		fmt.Println(err.Error())
@@ -67,25 +66,25 @@ func (myself *each) digest() <-chan bool {
 	return done
 }
 
-func (myself *each) chew(in <-chan reflect.Value, v visitor) {
+func (myself *each) chew(in <-chan reflect.Value, f iterator) {
 	for i := 0; i < myself.routinesCount; i++ {
-		go func(myself *each, in <-chan reflect.Value, v visitor) {
+		go func(myself *each, in <-chan reflect.Value, f iterator) {
 			for data := range in {
-				myself.apply(v, data)
+				myself.apply(f, data)
 			}
 			myself.routinesDone <- true
-		}(myself, in, v)
+		}(myself, in, f)
 	}
 }
 
-func Each(data array, v visitor) {
+func Each(data array, f iterator) {
 	start := time.Now()
 	routines := runtime.NumCPU()
 	myself := each{
 		routines,
 		make(chan bool, routines)}
 
-	myself.chew(myself.feed(data), v)
+	myself.chew(myself.feed(data), f)
 	<-myself.digest()
 	fmt.Println("<< each >> Done in ", time.Since(start))
 }

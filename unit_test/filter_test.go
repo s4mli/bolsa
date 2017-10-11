@@ -67,18 +67,22 @@ func (anonymous *_filterTester) testWithArray(t *testing.T) {
 }
 
 func (anonymous *_filterTester) testWithSlice(t *testing.T) {
-	r := piezas.Filter([]int64{1, 2, 3, 4, 5, 6, 7, 8, 99},
+	input := []int64{}
+	for i := 1; i < 99999; i++ {
+		input = append(input, int64(i))
+	}
+	r := piezas.Filter(input,
 		func(k int64) bool {
 			return k > 0
 		}, true)
 
-	expected := []int64{1, 2, 3, 4, 5, 6, 7, 8, 99}
+	expected := input
 	assert.Equal(t, len(expected), len(r))
 	for index, v := range expected {
 		assert.Equal(t, v, r[index])
 	}
 
-	r = piezas.Filter([]int64{1, 2, 3, 4, 5, 6, 7, 8, 99},
+	r = piezas.Filter(input,
 		func(k int64) bool {
 			return k > 0
 		}, false)

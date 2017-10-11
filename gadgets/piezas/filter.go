@@ -8,10 +8,13 @@ import (
 	"time"
 )
 
-type filter interface{} // a func can do checking and then return a boolean
-type _filter struct{}
+type filter struct {
+	stable        bool
+	routinesCount int
+	routinesDone  chan bool
+}
 
-func (anonymous *_filter) apply(f filter, d terco) bool {
+func (myself *filter) apply(f iterator, d terco) bool {
 	fn := reflect.Indirect(reflect.ValueOf(f))
 	if fn.Kind() != reflect.Func {
 		err := fmt.Errorf("<< filter >> Fliter must be a Func, skip")
@@ -47,73 +50,78 @@ func (anonymous *_filter) apply(f filter, d terco) bool {
 	return fn.Call([]reflect.Value{d.Data})[0].Interface().(bool)
 }
 
-func (anonymous *_filter) feed(data array, in chan terco) {
-	a := reflect.Indirect(reflect.ValueOf(data))
-	kind := a.Kind()
-	if kind != reflect.Array && kind != reflect.Slice {
-		in <- terco{reflect.ValueOf(data), 0}
-	} else {
-		for i := 0; i < a.Len(); i++ {
-			in <- terco{a.Index(i), i}
+func (myself *filter) feed(data array) <-chan terco {
+	in := make(chan terco, myself.routinesCount)
+	go func(data array, in chan<- terco) {
+		a := reflect.Indirect(reflect.ValueOf(data))
+		kind := a.Kind()
+		if kind != reflect.Array && kind != reflect.Slice {
+			in <- terco{reflect.ValueOf(data), 0}
+		} else {
+			for i := 0; i < a.Len(); i++ {
+				in <- terco{a.Index(i), i}
+			}
 		}
-	}
-	close(in)
+		close(in)
+	}(data, in)
+	return in
 }
 
-func (anonymous *_filter) digest(routines int, finished chan bool, out chan terco) {
-	for i := 0; i < routines; i++ {
-		<-finished
-	}
-	close(out)
+func (myself *filter) digest(out <-chan terco) []interface{} {
+	done := make(chan []interface{})
+	go func(myself *filter, out <-chan terco, done chan<- []interface{}) {
+		results := []interface{}{}
+		if myself.stable {
+			s := tercos{}
+			for d := range out {
+				s = append(s, d)
+			}
+			sort.Sort(s)
+			for _, d := range s {
+				results = append(results, d.Data.Interface())
+			}
+		} else {
+			for d := range out {
+				results = append(results, d.Data.Interface())
+			}
+		}
+		done <- results
+	}(myself, out, done)
+	return <-done
 }
 
-func (anonymous *_filter) chew(f filter, routines int, finished chan bool, in chan terco, out chan terco) {
-	for i := 0; i < routines; i++ {
-		go func(in chan terco, out chan terco, finished chan bool, f filter) {
+func (myself *filter) chew(in <-chan terco, f iterator) <-chan terco {
+	out := make(chan terco, myself.routinesCount)
+	for i := 0; i < myself.routinesCount; i++ {
+		go func(myself *filter, in <-chan terco, out chan<- terco, f iterator) {
 			for data := range in {
-				passed := anonymous.apply(f, data)
+				passed := myself.apply(f, data)
 				if passed {
 					out <- data
 				}
 			}
-			finished <- true
-		}(in, out, finished, f)
-	}
-}
-
-func (anonymous *_filter) outlet(stable bool, out chan terco, done chan []interface{}) {
-	results := []interface{}{}
-	if stable {
-		s := tercos{}
-		for d := range out {
-			s = append(s, d)
-		}
-		sort.Sort(s)
-		for _, d := range s {
-			results = append(results, d.Data.Interface())
-		}
-	} else {
-		for d := range out {
-			results = append(results, d.Data.Interface())
-		}
+			myself.routinesDone <- true
+		}(myself, in, out, f)
 	}
 
-	done <- results
+	go func(myself *filter, out chan<- terco) {
+		for i := 0; i < myself.routinesCount; i++ {
+			<-myself.routinesDone
+		}
+		close(out)
+	}(myself, out)
+	return out
 }
 
-func Filter(data array, f filter, stable bool) []interface{} {
+func Filter(data array, f iterator, stable bool) []interface{} {
 	start := time.Now()
 	routines := runtime.NumCPU()
-	in := make(chan terco, routines)
-	out := make(chan terco, routines)
-	finished := make(chan bool, routines)
-	done := make(chan []interface{})
-	anonymous := _filter{}
-	go anonymous.feed(data, in)
-	go anonymous.chew(f, routines, finished, in, out)
-	go anonymous.digest(routines, finished, out)
-	go anonymous.outlet(stable, out, done)
-	r := <-done
+	myself := filter{
+		stable,
+		routines,
+		make(chan bool, routines)}
+
+	r := myself.digest(myself.chew(myself.feed(data), f))
 	fmt.Println("<< filter >> Done in ", time.Since(start))
 	return r
 }
