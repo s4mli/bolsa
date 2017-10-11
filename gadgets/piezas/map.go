@@ -8,11 +8,14 @@ import (
 	"time"
 )
 
-type mapper interface{} // a func can do mapping
-type _map struct{}
+type _map struct {
+	stable        bool
+	routinesCount int
+	routinesDone  chan bool
+}
 
-func (anonymous *_map) apply(m mapper, d terco) terco {
-	fn := reflect.Indirect(reflect.ValueOf(m))
+func (myself *_map) apply(f iterator, d terco) terco {
+	fn := reflect.Indirect(reflect.ValueOf(f))
 	if fn.Kind() != reflect.Func {
 		err := fmt.Errorf("<< map >> Mapper must be a Func, skip")
 		fmt.Println(err.Error())
@@ -39,69 +42,75 @@ func (anonymous *_map) apply(m mapper, d terco) terco {
 	return terco{fn.Call([]reflect.Value{d.Data})[0], d.Index}
 }
 
-func (anonymous *_map) feed(data array, in chan terco) {
-	a := reflect.Indirect(reflect.ValueOf(data))
-	kind := a.Kind()
-	if kind != reflect.Array && kind != reflect.Slice {
-		in <- terco{reflect.ValueOf(data), 0}
-	} else {
-		for i := 0; i < a.Len(); i++ {
-			in <- terco{a.Index(i), i}
-		}
-	}
-	close(in)
-}
-
-func (anonymous *_map) digest(routines int, finished chan bool, out chan terco) {
-	for i := 0; i < routines; i++ {
-		<-finished
-	}
-	close(out)
-}
-
-func (anonymous *_map) chew(m mapper, routines int, finished chan bool, in chan terco, out chan terco) {
-	for i := 0; i < routines; i++ {
-		go func(in chan terco, out chan terco, finished chan bool, m mapper) {
-			for data := range in {
-				out <- anonymous.apply(m, data)
+func (myself *_map) feed(data array) <-chan terco {
+	in := make(chan terco, myself.routinesCount)
+	go func(data array, in chan<- terco) {
+		a := reflect.Indirect(reflect.ValueOf(data))
+		kind := a.Kind()
+		if kind != reflect.Array && kind != reflect.Slice {
+			in <- terco{reflect.ValueOf(data), 0}
+		} else {
+			for i := 0; i < a.Len(); i++ {
+				in <- terco{a.Index(i), i}
 			}
-			finished <- true
-		}(in, out, finished, m)
-	}
+		}
+		close(in)
+	}(data, in)
+	return in
 }
 
-func (anonymous *_map) outlet(stable bool, out chan terco, done chan []interface{}) {
-	results := []interface{}{}
-	if stable {
-		s := tercos{}
-		for d := range out {
-			s = append(s, d)
+func (myself *_map) digest(out <-chan terco) []interface{} {
+	done := make(chan []interface{})
+	go func(myself *_map, out <-chan terco, done chan<- []interface{}) {
+		results := []interface{}{}
+		if myself.stable {
+			s := tercos{}
+			for d := range out {
+				s = append(s, d)
+			}
+			sort.Sort(s)
+			for _, d := range s {
+				results = append(results, d.Data.Interface())
+			}
+		} else {
+			for d := range out {
+				results = append(results, d.Data.Interface())
+			}
 		}
-		sort.Sort(s)
-		for _, d := range s {
-			results = append(results, d.Data.Interface())
-		}
-	} else {
-		for d := range out {
-			results = append(results, d.Data.Interface())
-		}
-	}
-	done <- results
+		done <- results
+	}(myself, out, done)
+	return <-done
 }
 
-func Map(data array, m mapper, stable bool) []interface{} {
+func (myself *_map) chew(in <-chan terco, f iterator) <-chan terco {
+	out := make(chan terco, myself.routinesCount)
+	for i := 0; i < myself.routinesCount; i++ {
+		go func(myself *_map, in <-chan terco, out chan<- terco, f iterator) {
+			for data := range in {
+				out <- myself.apply(f, data)
+			}
+			myself.routinesDone <- true
+		}(myself, in, out, f)
+	}
+
+	go func(myself *_map, out chan<- terco) {
+		for i := 0; i < myself.routinesCount; i++ {
+			<-myself.routinesDone
+		}
+		close(out)
+	}(myself, out)
+	return out
+}
+
+func Map(data array, f iterator, stable bool) []interface{} {
 	start := time.Now()
 	routines := runtime.NumCPU()
-	in := make(chan terco, routines)
-	out := make(chan terco, routines)
-	finished := make(chan bool, routines)
-	done := make(chan []interface{})
-	anonymous := _map{}
-	go anonymous.feed(data, in)
-	go anonymous.chew(m, routines, finished, in, out)
-	go anonymous.digest(routines, finished, out)
-	go anonymous.outlet(stable, out, done)
-	r := <-done
+	myself := _map{
+		stable,
+		routines,
+		make(chan bool, routines)}
+
+	r := myself.digest(myself.chew(myself.feed(data), f))
 	fmt.Println("<< map >> Done in ", time.Since(start))
 	return r
 }
