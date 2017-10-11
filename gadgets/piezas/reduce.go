@@ -6,11 +6,10 @@ import (
 	"time"
 )
 
-type reducer interface{} // a func that can do reducing
-type _reduce struct{}
+type reduce struct{}
 
-func (anonymous *_reduce) apply(r reducer, d, memo reflect.Value) reflect.Value {
-	fn := reflect.Indirect(reflect.ValueOf(r))
+func (myself *reduce) apply(f iterator, d, memo reflect.Value) reflect.Value {
+	fn := reflect.Indirect(reflect.ValueOf(f))
 	if fn.Kind() != reflect.Func {
 		err := fmt.Errorf("<< reduce >> Reducer must be a Func, skip")
 		fmt.Println(err.Error())
@@ -45,26 +44,28 @@ func (anonymous *_reduce) apply(r reducer, d, memo reflect.Value) reflect.Value 
 	return fn.Call([]reflect.Value{d, memo})[0]
 }
 
-func (anonymous *_reduce) doReduce(data array, memo interface{}, r reducer, done chan reflect.Value) {
-	a := reflect.Indirect(reflect.ValueOf(data))
-	kind := a.Kind()
-	if kind != reflect.Array && kind != reflect.Slice {
-		done <- anonymous.apply(r, reflect.ValueOf(data), reflect.ValueOf(memo))
-	} else {
-		m := reflect.ValueOf(memo)
-		for i := 0; i < a.Len(); i++ {
-			m = anonymous.apply(r, a.Index(i), m)
+func (myself *reduce) reduce(data array, memo interface{}, f iterator) interface{} {
+	done := make(chan reflect.Value)
+	go func(myself *reduce, data array, memo interface{}, f iterator, done chan<- reflect.Value) {
+		a := reflect.Indirect(reflect.ValueOf(data))
+		kind := a.Kind()
+		if kind != reflect.Array && kind != reflect.Slice {
+			done <- myself.apply(f, reflect.ValueOf(data), reflect.ValueOf(memo))
+		} else {
+			m := reflect.ValueOf(memo)
+			for i := 0; i < a.Len(); i++ {
+				m = myself.apply(f, a.Index(i), m)
+			}
+			done <- m
 		}
-		done <- m
-	}
+	}(myself, data, memo, f, done)
+	return (<-done).Interface()
 }
 
-func Reduce(data array, memo interface{}, r reducer) interface{} {
+func Reduce(data array, memo interface{}, f iterator) interface{} {
 	start := time.Now()
-	done := make(chan reflect.Value)
-	anonymous := _reduce{}
-	go anonymous.doReduce(data, memo, r, done)
-	result := <-done
+	myself := reduce{}
+	r := myself.reduce(data, memo, f)
 	fmt.Println("<< reduce >> Done in ", time.Since(start))
-	return result.Interface()
+	return r
 }
