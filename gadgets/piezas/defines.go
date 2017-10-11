@@ -3,6 +3,7 @@ package piezas
 import "reflect"
 
 type array interface{}
+type iterator interface{}
 
 type terco struct {
 	Data  reflect.Value

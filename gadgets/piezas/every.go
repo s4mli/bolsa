@@ -7,14 +7,13 @@ import (
 	"time"
 )
 
-type tester interface{} // a func can do checking and then return a boolean
 type every struct {
 	routinesCount int
 	routinesDone  chan bool
 }
 
-func (myself *every) apply(t tester, d reflect.Value) bool {
-	fn := reflect.Indirect(reflect.ValueOf(t))
+func (myself *every) apply(f iterator, d reflect.Value) bool {
+	fn := reflect.Indirect(reflect.ValueOf(f))
 	if fn.Kind() != reflect.Func {
 		err := fmt.Errorf("<< every >> Tester must be a Func, skip")
 		fmt.Println(err.Error())
@@ -78,19 +77,19 @@ func (myself *every) digest(out <-chan bool) bool {
 	return <-done
 }
 
-func (myself *every) chew(in <-chan reflect.Value, t tester) <-chan bool {
+func (myself *every) chew(in <-chan reflect.Value, f iterator) <-chan bool {
 	out := make(chan bool, myself.routinesCount)
 	for i := 0; i < myself.routinesCount; i++ {
-		go func(myself *every, in <-chan reflect.Value, out chan<- bool, t tester) {
+		go func(myself *every, in <-chan reflect.Value, out chan<- bool, f iterator) {
 			for data := range in {
-				passed := myself.apply(t, data)
+				passed := myself.apply(f, data)
 				out <- passed
 				if !passed {
 					break
 				}
 			}
 			myself.routinesDone <- true
-		}(myself, in, out, t)
+		}(myself, in, out, f)
 	}
 
 	go func(myself *every, out chan<- bool) {
@@ -102,14 +101,14 @@ func (myself *every) chew(in <-chan reflect.Value, t tester) <-chan bool {
 	return out
 }
 
-func Every(data array, t tester) bool {
+func Every(data array, f iterator) bool {
 	start := time.Now()
 	routines := runtime.NumCPU()
 	myself := every{
 		routines,
 		make(chan bool, routines)}
 
-	r := myself.digest(myself.chew(myself.feed(data), t))
+	r := myself.digest(myself.chew(myself.feed(data), f))
 	fmt.Println("<< every >> Done in ", time.Since(start))
 	return r
 }
