@@ -50,7 +50,7 @@ func (myself *every) apply(f iterator, d reflect.Value) bool {
 
 func (myself *every) feed(data array) <-chan reflect.Value {
 	in := make(chan reflect.Value, myself.routinesCount)
-	go func(myself *every, in chan<- reflect.Value) {
+	go func(data array, in chan<- reflect.Value) {
 		a := reflect.Indirect(reflect.ValueOf(data))
 		kind := a.Kind()
 		if kind != reflect.Array && kind != reflect.Slice {
@@ -61,7 +61,7 @@ func (myself *every) feed(data array) <-chan reflect.Value {
 			}
 		}
 		close(in)
-	}(myself, in)
+	}(data, in)
 	return in
 }
 

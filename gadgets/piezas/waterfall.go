@@ -7,7 +7,6 @@ import (
 )
 
 type task interface{} // a func that runs in waterfall
-
 type step struct {
 	Task task
 }
@@ -27,18 +26,17 @@ func (s *step) process(args []reflect.Value) []reflect.Value {
 			fmt.Println("<< waterfall >> Recover - ", fnt, " ", r)
 		}
 	}(fn)
-
 	return fn.Call(args)
 }
 
-func (s *step) run(in chan []reflect.Value) chan []reflect.Value {
+func (s *step) run(in <-chan []reflect.Value) <-chan []reflect.Value {
 	out := make(chan []reflect.Value)
-	go func(s *step) {
+	go func(s *step, in <-chan []reflect.Value, out chan<- []reflect.Value) {
 		for data := range in {
 			out <- s.process(data)
 		}
 		close(out)
-	}(s)
+	}(s, in, out)
 	return out
 }
 
@@ -47,36 +45,33 @@ func newStep(t task) *step {
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 type Tasks []task
+type Waterfall struct{}
 
-type Waterfall struct {
-	In  chan []reflect.Value
-	Out chan []reflect.Value
-}
+func (wf *Waterfall) run(in chan<- []reflect.Value, out <-chan []reflect.Value,
+	firstArgs ...interface{}) []interface{} {
 
-func (wf *Waterfall) feed(in chan []reflect.Value, firstArgs ...interface{}) {
-	go func(in chan []reflect.Value, firstArgs ...interface{}) {
+	go func(in chan<- []reflect.Value, firstArgs ...interface{}) {
 		args := []reflect.Value{}
 		for _, arg := range firstArgs {
 			args = append(args, reflect.ValueOf(arg))
 		}
 		in <- args
 		close(in)
-	}(wf.In, firstArgs...)
-}
+	}(in, firstArgs...)
 
-func (wf *Waterfall) done(start time.Time) {
-	for range wf.Out {
+	results := []interface{}{}
+	for _, v := range <-out {
+		results = append(results, v.Interface())
 	}
-	fmt.Println("<< waterfall >> Done in ", time.Since(start))
+	return results
 }
 
-func NewWaterfall(tasks Tasks, firstArgs ...interface{}) {
+func NewWaterfall(tasks Tasks, firstArgs ...interface{}) []interface{} {
 	start := time.Now()
 	in := make(chan []reflect.Value)
-	var out chan []reflect.Value
+	var out <-chan []reflect.Value
 	for _, task := range tasks {
 		s := newStep(task)
 		if out == nil {
@@ -86,7 +81,8 @@ func NewWaterfall(tasks Tasks, firstArgs ...interface{}) {
 		}
 	}
 
-	waterfall := &Waterfall{in, out}
-	waterfall.feed(in, firstArgs...)
-	waterfall.done(start)
+	wf := Waterfall{}
+	r := wf.run(in, out, firstArgs...)
+	fmt.Println("<< waterfall >> Done in ", time.Since(start))
+	return r
 }
