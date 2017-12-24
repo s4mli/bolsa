@@ -23,7 +23,7 @@ func (m *Mysql) Query(f func(db *sql.DB) error) error {
 }
 
 func NewMysql(host, port, user, password, db string) *Mysql {
-	mySqlInfo := fmt.Sprintf("%s:%s@tcp(%s:%d)/%s?charset=utf8",
+	mySqlInfo := fmt.Sprintf("%s:%s@tcp(%s:%s)/%s?charset=utf8",
 		user, password, host, port, db)
 	if db, err := sql.Open("mysql", mySqlInfo); err != nil {
 		panic(err)
