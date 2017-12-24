@@ -1,9 +1,8 @@
-package unit_test
+package piezas
 
 import (
 	"testing"
 
-	"github.com/samwooo/bolsa/gadgets/piezas"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -11,25 +10,25 @@ type _filterTester struct{}
 
 func (anonymous *_filterTester) testWithError(t *testing.T) {
 	input := []int64{1, 2, 3, 4, 5, 6, 7, 8, 99}
-	r := piezas.Filter(input,
+	r := Filter(input,
 		func(k int) int {
 			return k * k
 		}, false)
 	assert.Equal(t, 0, len(r))
 
-	r = piezas.Filter(input,
+	r = Filter(input,
 		func(k int) bool {
 			return true
 		}, false)
 	assert.Equal(t, 0, len(r))
 
-	r = piezas.Filter(input,
+	r = Filter(input,
 		func(k int) (bool, error) {
 			return true, nil
 		}, false)
 	assert.Equal(t, 0, len(r))
 
-	r = piezas.Filter(input,
+	r = Filter(input,
 		func(k, j int) bool {
 			return true
 		}, false)
@@ -37,7 +36,7 @@ func (anonymous *_filterTester) testWithError(t *testing.T) {
 }
 
 func (anonymous *_filterTester) testWithArray(t *testing.T) {
-	r := piezas.Filter([9]int64{1, 2, 3, 4, 5, 6, 7, 8, 99},
+	r := Filter([9]int64{1, 2, 3, 4, 5, 6, 7, 8, 99},
 		func(k int64) bool {
 			return k > 0
 		}, true)
@@ -48,7 +47,7 @@ func (anonymous *_filterTester) testWithArray(t *testing.T) {
 		assert.Equal(t, v, r[index])
 	}
 
-	r = piezas.Filter([9]int64{1, 2, 3, 4, 5, 6, 7, 8, 99},
+	r = Filter([9]int64{1, 2, 3, 4, 5, 6, 7, 8, 99},
 		func(k int64) bool {
 			return k > 0
 		}, false)
@@ -71,7 +70,7 @@ func (anonymous *_filterTester) testWithSlice(t *testing.T) {
 	for i := 1; i < 99999; i++ {
 		input = append(input, int64(i))
 	}
-	r := piezas.Filter(input,
+	r := Filter(input,
 		func(k int64) bool {
 			return k > 0
 		}, true)
@@ -82,7 +81,7 @@ func (anonymous *_filterTester) testWithSlice(t *testing.T) {
 		assert.Equal(t, v, r[index])
 	}
 
-	r = piezas.Filter(input,
+	r = Filter(input,
 		func(k int64) bool {
 			return k > 0
 		}, false)
@@ -101,7 +100,7 @@ func (anonymous *_filterTester) testWithSlice(t *testing.T) {
 }
 
 func (anonymous *_filterTester) testWithSinglePara(t *testing.T) {
-	r := piezas.Filter(99,
+	r := Filter(99,
 		func(k int) bool {
 			return k > 0
 		}, true)
@@ -112,7 +111,7 @@ func (anonymous *_filterTester) testWithSinglePara(t *testing.T) {
 		assert.Equal(t, v, r[index])
 	}
 
-	r = piezas.Filter([]int{99},
+	r = Filter([]int{99},
 		func(k int) bool {
 			return k > 0
 		}, false)

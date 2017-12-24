@@ -1,0 +1,26 @@
+[submodule "vendor/github.com/aws/aws-sdk-go"]
+	path = vendor/github.com/aws/aws-sdk-go
+	url = http://github.com/aws/aws-sdk-go.git
+[submodule "vendor/golang.org/x/net"]
+	path = vendor/golang.org/x/net
+	url = http://github.com/golang/net.git
+[submodule "vendor/golang.org/x/sync"]
+	path = vendor/golang.org/x/sync
+	url = http://github.com/golang/sync.git
+[submodule "vendor/github.com/go-sql-driver/mysql"]
+	path = vendor/github.com/go-sql-driver/mysql
+	url = http://github.com/go-sql-driver/mysql
+[submodule "vendor/github.com/lib/pg"]
+	path = vendor/github.com/lib/pg
+	url = http://github.com/lib/pg
+[submodule "vendor/gopkg.in/mgo.v2"]
+	path = vendor/gopkg.in/mgo.v2
+	url = http://github.com/go-mgo/mgo.git
+	branch = v2
+[submodule "vendor/gopkg.in/yaml.v2"]
+	path = vendor/gopkg.in/yaml.v2
+	url = http://github.com/go-yaml/yaml.git
+	branch = v2
+[submodule "vendor/github.com/stretchr/testify"]
+	path = vendor/github.com/stretchr/testify
+	url = http://github.com/stretchr/testify

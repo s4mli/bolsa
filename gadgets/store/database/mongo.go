@@ -16,7 +16,7 @@ func (ms *Mongo) Query(collection string, f func(c *mgo.Collection) error) error
 	return f(c)
 }
 
-func NewMongoDB(url, db string) *Mongo {
+func NewMongo(url, db string) *Mongo {
 	s, err := mgo.Dial(url)
 	if err != nil {
 		panic(err)

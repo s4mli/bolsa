@@ -5,11 +5,50 @@ import (
 	"strconv"
 	"sync"
 
+	"flag"
+	"os"
+
+	"github.com/samwooo/bolsa/gadgets/config"
+	"github.com/samwooo/bolsa/gadgets/endpoints"
+	"github.com/samwooo/bolsa/gadgets/job"
+	"github.com/samwooo/bolsa/gadgets/logging"
 	"github.com/samwooo/bolsa/gadgets/piezas"
+	"github.com/samwooo/bolsa/gadgets/queue"
+	"github.com/samwooo/bolsa/gadgets/store"
+	"github.com/samwooo/bolsa/gadgets/util"
 )
 
 func main() {
-	if true { // waterfall
+	if true {
+		env := os.Getenv(fmt.Sprintf("%s_env", util.APP_NAME))
+		if env == "" {
+			env = "development"
+		}
+		var configFile string
+		flag.StringVar(&configFile, "config", "./config.yaml", "configuration file to load")
+		flag.Parse()
+		var c *config.Config
+		c, errs := config.LoadConfig(env, configFile)
+		if len(errs) > 0 {
+			os.Exit(1)
+		}
+		logging.DefaultLogger(fmt.Sprintf(" < %s > ", util.APP_NAME),
+			logging.LogLevelFromString(c.Log.Level), 100)
+		logging.GetLogger("").Debugf("running with %s", c)
+
+		s := store.NewDBStore()
+		q := queue.NewSqsQueue(&c.Queue)
+		job.NewPublisherTelegraph(q, s, &c.Job, c.Queue.Wait).Start()
+
+		httpServer := endpoints.NewServer(&c.Web)
+		httpServer.RegisterResource(&job.Telegram{}, "/telegram")
+		httpServer.RegisterHandler(endpoints.NewMetricsHandler(&c.Mongo, &c.MySql, &c.Postgres), "/metrics")
+		httpServer.RegisterHandler(endpoints.NewTelegramHandler("/telegrams/", c.Web.Port, q, s),
+			"/telegrams/")
+		httpServer.Start()
+	}
+
+	if false { // waterfall
 		piezas.NewWaterfall(piezas.Tasks{
 			func(a ...int) (int, int, error) {
 				total := 1
@@ -27,7 +66,7 @@ func main() {
 				fmt.Println("waterfall result :", a)
 			}}, 1, 2, 3, 4, 5, 6, 7, 8, 9)
 	}
-	if true { // map slice
+	if false { // map slice
 		r := piezas.Map([]int64{1, 2, 3, 4, 5, 6, 7, 8, 99, 1112, 213, 123, 542, 45, 56, 345,
 			623, 5, 12, 3123, 123334, 23412, 21341234, 1234, 123, 412, 34, 123, 413, 45, 324,
 			52, 4523, 45, 134, 523, 4312, 34, 1234, 12, 341, 234, 123, 1234, 1345, 34, 564, 325,
@@ -37,7 +76,7 @@ func main() {
 			}, true)
 		fmt.Println(r)
 	}
-	if true { // map
+	if false { // map
 		r := piezas.Map("8",
 			func(k string) int {
 				if r, err := strconv.Atoi(k); err != nil {
@@ -48,13 +87,13 @@ func main() {
 			}, true)
 		fmt.Println(r)
 	}
-	if true { // every
+	if false { // every
 		r := piezas.Every(
 			[]int64{1, 2, 3, 4, 5, 6, 7, 8, 99, 1112, 213, 123, 542, 45, 56, 345, 623},
 			func(k int64) bool { return k < 0 })
 		fmt.Println(r)
 	}
-	if true { // each
+	if false { // each
 		callCount := 0
 		mutex := sync.Mutex{}
 		input := []int64{1, 2, 3, 4, 5, 6, 7, 8, 99, 1112, 213, 123, 542, 45, 56, 345, 623}
@@ -66,7 +105,7 @@ func main() {
 			})
 		fmt.Println(callCount == len(input))
 	}
-	if true { // reduce
+	if false { // reduce
 		input := []int64{1, 2, 3, 4, 5, 6, 7, 8, 99, 1112, 213, 123, 542, 45, 56, 345, 623}
 		r := piezas.Reduce(input, 0,
 			func(k int64, memo int) int {

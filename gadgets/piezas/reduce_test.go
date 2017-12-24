@@ -1,10 +1,9 @@
-package unit_test
+package piezas
 
 import (
 	"strconv"
 	"testing"
 
-	"github.com/samwooo/bolsa/gadgets/piezas"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -13,25 +12,25 @@ type _reduceTester struct{}
 func (anonymous *_reduceTester) testWithError(t *testing.T) {
 	// Type mismatched then do nothing
 	input := []int64{1, 2, 3, 4, 5, 6, 7, 8, 99}
-	r := piezas.Reduce(input, 0,
+	r := Reduce(input, 0,
 		func(k int) int {
 			return 1
 		})
 	assert.Equal(t, 0, r)
 
-	r = piezas.Reduce(input, 0,
+	r = Reduce(input, 0,
 		func(k int, m int) int {
 			return k + m
 		})
 	assert.Equal(t, 0, r)
 
-	r = piezas.Reduce(input, 0,
+	r = Reduce(input, 0,
 		func(k int, m int) int {
 			return k + m
 		})
 	assert.Equal(t, 0, r)
 
-	r = piezas.Reduce(input, 0,
+	r = Reduce(input, 0,
 		func(k int, m int) (int, error) {
 			return k + m, nil
 		})
@@ -41,13 +40,13 @@ func (anonymous *_reduceTester) testWithError(t *testing.T) {
 func (anonymous *_reduceTester) testWithArray(t *testing.T) {
 	input := [9]int{1, 2, 3, 4, 5, 6, 7, 8, 99}
 	expected := 1 + 2 + 3 + 4 + 5 + 6 + 7 + 8 + 99
-	r := piezas.Reduce(input, 0,
+	r := Reduce(input, 0,
 		func(k, memo int) int {
 			return memo + k
 		})
 	assert.Equal(t, expected, r)
 
-	r = piezas.Reduce([9]string{"1", "2", "3", "4", "5", "6", "7", "8", "99"}, 0,
+	r = Reduce([9]string{"1", "2", "3", "4", "5", "6", "7", "8", "99"}, 0,
 		func(k string, memo int) int {
 			r, err := strconv.Atoi(k)
 			if err != nil {
@@ -62,13 +61,13 @@ func (anonymous *_reduceTester) testWithArray(t *testing.T) {
 func (anonymous *_reduceTester) testWithSlice(t *testing.T) {
 	input := []int{1, 2, 3, 4, 5, 6, 7, 8, 99}
 	expected := 1 + 2 + 3 + 4 + 5 + 6 + 7 + 8 + 99
-	r := piezas.Reduce(input, 0,
+	r := Reduce(input, 0,
 		func(k, memo int) int {
 			return memo + k
 		})
 	assert.Equal(t, expected, r)
 
-	r = piezas.Reduce([]string{"1", "2", "3", "4", "5", "6", "7", "8", "99"}, 0,
+	r = Reduce([]string{"1", "2", "3", "4", "5", "6", "7", "8", "99"}, 0,
 		func(k string, memo int) int {
 			r, err := strconv.Atoi(k)
 			if err != nil {
@@ -83,13 +82,13 @@ func (anonymous *_reduceTester) testWithSlice(t *testing.T) {
 func (anonymous *_reduceTester) testWithSinglePara(t *testing.T) {
 	input := 99
 	expected := 99
-	r := piezas.Reduce(input, 0,
+	r := Reduce(input, 0,
 		func(k, memo int) int {
 			return memo + k
 		})
 	assert.Equal(t, expected, r)
 
-	r = piezas.Reduce("99", 0,
+	r = Reduce("99", 0,
 		func(k string, memo int) int {
 			r, err := strconv.Atoi(k)
 			if err != nil {
