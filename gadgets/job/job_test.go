@@ -4,6 +4,8 @@ import (
 	"testing"
 	"time"
 
+	"sync"
+
 	"github.com/samwooo/bolsa/gadgets/logging"
 	"github.com/stretchr/testify/assert"
 )
@@ -11,7 +13,7 @@ import (
 func testFeed(t *testing.T) {
 	logging.SetupLogger("", &fakeLogHandler{}, &fakeLogFilter{})
 	cs := fakeContextStreamer{}
-	jt := NewJob(&fakeAction{}, &cs, &fakeTaskRescue{}, &fakeQueue{1},
+	jt := NewJob(&fakeAction{}, &cs, &fakeTaskRescue{}, &fakeQueue{1, sync.Mutex{}},
 		nil, 1, 1, logging.GetLogger("shutUp"))
 
 	bs, err := cs.BytesToContexts((<-jt.feed()).Payload())
@@ -23,7 +25,7 @@ func testFeed(t *testing.T) {
 func testChew(t *testing.T) {
 	logging.SetupLogger("", &fakeLogHandler{}, &fakeLogFilter{})
 	cs := fakeContextStreamer{}
-	jt := NewJob(&fakeAction{}, &cs, &fakeTaskRescue{}, &fakeQueue{1},
+	jt := NewJob(&fakeAction{}, &cs, &fakeTaskRescue{}, &fakeQueue{1, sync.Mutex{}},
 		nil, 1, 1, logging.GetLogger("shutUp"))
 
 	rs := <-jt.chew(jt.feed())
@@ -38,14 +40,14 @@ func testChew(t *testing.T) {
 func testDigest(t *testing.T) {
 	logging.SetupLogger("", &fakeLogHandler{}, &fakeLogFilter{})
 	cs := fakeContextStreamer{}
-	jt := NewJob(&fakeAction{}, &cs, nil, &fakeQueue{1},
+	jt := NewJob(&fakeAction{}, &cs, nil, &fakeQueue{1, sync.Mutex{}},
 		nil, 1, 1, logging.GetLogger("shutUp"))
 	jt.TaskRescue = &fakeTaskRescue{jt}
 	jt.digest(jt.chew(jt.feed()))
 	time.Sleep(time.Second)
 	fq, ok := jt.q.(*fakeQueue)
 	assert.Equal(t, true, ok)
-	assert.Equal(t, int32(666), fq.messageCount)
+	assert.Equal(t, int32(666), fq.getMessageCount())
 }
 
 func TestJob(t *testing.T) {

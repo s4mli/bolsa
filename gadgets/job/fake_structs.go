@@ -3,8 +3,9 @@ package job
 import (
 	"encoding/json"
 	"fmt"
-	"sync/atomic"
 	"time"
+
+	"sync"
 
 	"github.com/samwooo/bolsa/gadgets/logging"
 	"github.com/samwooo/bolsa/gadgets/queue"
@@ -92,6 +93,7 @@ func (m *fakeMessage) Delete() error {
 
 type fakeQueue struct {
 	messageCount int32
+	mutex        sync.Mutex
 }
 
 func (q *fakeQueue) SendMessage(delay int, payload []byte) error {
@@ -99,12 +101,25 @@ func (q *fakeQueue) SendMessage(delay int, payload []byte) error {
 }
 
 func (q *fakeQueue) ReceiveMessage() (queue.Message, error) {
-	atomic.AddInt32(&q.messageCount, 0)
+	q.mutex.Lock()
+	defer q.mutex.Unlock()
 	cs := []Context{fakeContext{int(q.messageCount)}}
 	s := fakeContextStreamer{}
 	bs, _ := s.ContextsToBytes(cs)
 	return &fakeMessage{bs}, nil
 
+}
+
+func (q *fakeQueue) setMessageCount(c int32) {
+	q.mutex.Lock()
+	defer q.mutex.Unlock()
+	q.messageCount = c
+}
+
+func (q *fakeQueue) getMessageCount() int32 {
+	q.mutex.Lock()
+	defer q.mutex.Unlock()
+	return q.messageCount
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -114,5 +129,5 @@ type fakeTaskRescue struct {
 
 func (r *fakeTaskRescue) Rescue(tr TaskResult) {
 	fq, _ := r.q.(*fakeQueue)
-	atomic.StoreInt32(&fq.messageCount, 666)
+	fq.setMessageCount(666)
 }
