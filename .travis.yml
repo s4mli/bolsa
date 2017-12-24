@@ -6,9 +6,7 @@ go:
 install:
   - go get gopkg.in/mgo.v2
   - go get gopkg.in/yaml.v2
-  - go get golang.org/x/net
   - go get github.com/lib/pq
-  - go get golang.org/x/sync
   - go get github.com/aws/aws-sdk-go
   - go get github.com/go-sql-driver/mysql
   - go get github.com/stretchr/testify/assert
