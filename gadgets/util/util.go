@@ -20,8 +20,8 @@ func RandomDuration(maxSeconds int) time.Duration {
 
 func LogMetricsInfo(logger logging.Logger, action string, start time.Time) {
 	logger.Info(logging.MetricsInfo{
-		action,
-		time.Since(start).Seconds(),
+		Action:   action,
+		TimeCost: time.Since(start).Seconds(),
 	})
 }
 
