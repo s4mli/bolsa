@@ -25,21 +25,18 @@ func (c *Config) String() string {
 	return util.Stringify(*c)
 }
 
-func (c *Config) finalize(v interface{}, h Helper, howManyFields int) {
-	for i := 0; i < int(math.Min(float64(howManyFields), float64(reflect.TypeOf(v).NumField()))); i++ {
-		if reflect.ValueOf(v).Field(i).Kind() != reflect.String {
+func (c *Config) finalize(fieldIndex int, howManyFields int, h Helper) {
+	parent := reflect.ValueOf(c).Elem().Field(fieldIndex)
+	for i := 0; i < howManyFields; i++ {
+		field := parent.Field(i)
+		if field.Kind() != reflect.String {
 			continue
+		}
+		if s, err := h.GetParameter(field.String()); err != nil {
+			panic(err)
 		} else {
-			if s, err := h.GetParameter(reflect.ValueOf(v).Field(i).String()); err != nil {
-				panic(err)
-			} else {
-				ps := reflect.ValueOf(&v).Elem()
-				if ps.Kind() == reflect.Struct {
-					f := ps.Field(i)
-					if f.IsValid() && f.CanSet() {
-						f.SetString(s)
-					}
-				}
+			if field.IsValid() && field.CanSet() {
+				field.SetString(s)
 			}
 		}
 	}
@@ -69,7 +66,7 @@ func (c *Config) validate(env string) []error {
 			fmt.Println("Field index out of range - ", k)
 			continue
 		}
-		c.finalize(reflect.ValueOf(*c).Field(k).Interface(), helper, v)
+		c.finalize(k, v, helper)
 	}
 	return nil
 }
