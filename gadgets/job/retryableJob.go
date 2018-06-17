@@ -21,11 +21,11 @@ type RetryableJob struct {
 	*Job
 }
 
-func (*RetryableJob) batchSize() int {
+func (*RetryableJob) size() int {
 	return 8
 }
 
-func (*RetryableJob) doBatch(ctx context.Context, groupedMash []interface{}) (interface{}, error) {
+func (*RetryableJob) batch(ctx context.Context, groupedMash []interface{}) (interface{}, error) {
 	mashStr := "|"
 	for _, m := range groupedMash {
 		k, _ := m.(int)
@@ -34,7 +34,7 @@ func (*RetryableJob) doBatch(ctx context.Context, groupedMash []interface{}) (in
 	return strings.Repeat(mashStr, 22), nil
 }
 
-func (*RetryableJob) doAction(ctx context.Context, p interface{}) (r interface{}, e error) {
+func (*RetryableJob) act(ctx context.Context, p interface{}) (r interface{}, e error) {
 	if bodyStr, ok := p.(string); ok {
 		return " @ " + bodyStr + " @ ", nil
 	} else {
@@ -42,11 +42,11 @@ func (*RetryableJob) doAction(ctx context.Context, p interface{}) (r interface{}
 	}
 }
 
-func (rj *RetryableJob) worthRetry(Done) bool {
+func (rj *RetryableJob) worth(Done) bool {
 	return rand.Int()%rj.maxRetry > rj.curRetry
 }
 
-func (rj *RetryableJob) forgoRetry() bool {
+func (rj *RetryableJob) forgo() bool {
 	ended := rj.curRetry >= rj.maxRetry
 	rj.curRetry++
 	return ended

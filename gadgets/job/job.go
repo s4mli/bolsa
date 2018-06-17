@@ -13,15 +13,15 @@ import (
 type Job struct {
 	Logger  logging.Logger
 	workers int
-	batchNeeded
-	actionNeeded
-	retryNeeded
+	batchStrategy
+	actionStrategy
+	retryStrategy
 }
 
 func (j *Job) feed(ctx context.Context, mash []interface{}) <-chan interface{} {
-	type doBatch func(context.Context, []interface{}) (interface{}, error)
+	type batch func(context.Context, []interface{}) (interface{}, error)
 
-	feedWithBatch := func(batchSize int, batch doBatch) <-chan interface{} {
+	feedWithBatch := func(batchSize int, batch batch) <-chan interface{} {
 		mashLen := len(mash)
 		group := mashLen / batchSize
 		if mashLen%batchSize > 0 {
@@ -38,7 +38,7 @@ func (j *Job) feed(ctx context.Context, mash []interface{}) <-chan interface{} {
 			go func(groupedMash []interface{}, in chan<- interface{}, waiter chan<- bool) {
 				if data, err := batch(ctx, groupedMash); err != nil {
 					j.Logger.Errorf("batch( %d ) failed( %s ) for %+v", batchSize, err.Error(), groupedMash)
-					// TODO: handle group error or just log it out ?
+					in <- Done{groupedMash, nil, fmt.Errorf("batch error: %s", err.Error())}
 				} else {
 					j.Logger.Debugf("batch( %d ) done( %+v ) for %+v", batchSize, data, groupedMash)
 					in <- data
@@ -54,9 +54,9 @@ func (j *Job) feed(ctx context.Context, mash []interface{}) <-chan interface{} {
 		}(in, waiter)
 		return in
 	}
-	if j.batchNeeded != nil {
-		j.Logger.Debugf(" * batch needed size %d", j.batchNeeded.batchSize())
-		return feedWithBatch(j.batchNeeded.batchSize(), j.batchNeeded.doBatch)
+	if j.batchStrategy != nil {
+		j.Logger.Debugf(" * batch needed size %d", j.batchStrategy.size())
+		return feedWithBatch(j.batchStrategy.size(), j.batchStrategy.batch)
 	} else {
 		j.Logger.Debug(" * batch not needed")
 		return feedWithBatch(1, func(ctx context.Context, mash []interface{}) (interface{}, error) {
@@ -66,15 +66,14 @@ func (j *Job) feed(ctx context.Context, mash []interface{}) <-chan interface{} {
 }
 
 func (j *Job) chew(ctx context.Context, in <-chan interface{}) <-chan Done {
-	type doAction func(ctx context.Context, p interface{}) (r interface{}, e error)
+	type act func(ctx context.Context, p interface{}) (r interface{}, e error)
 
-	chewWithAction := func(action doAction) <-chan Done {
+	chewWithAction := func(action act) <-chan Done {
 		out := make(chan Done, j.workers)
 		waiter := make(chan bool, j.workers)
 		for i := 0; i < j.workers; i++ {
 			go func(in <-chan interface{}, out chan<- Done, waiter chan<- bool) {
 				for para := range in {
-					// TODO: if group error has been handled, then how to pipe it with param to the end ?
 					ret, err := action(ctx, para)
 					if err != nil {
 						j.Logger.Errorf("action failed( %s ) for %+v", err.Error(), para)
@@ -94,9 +93,9 @@ func (j *Job) chew(ctx context.Context, in <-chan interface{}) <-chan Done {
 		}(out, waiter)
 		return out
 	}
-	if j.actionNeeded != nil {
+	if j.actionStrategy != nil {
 		j.Logger.Debugf(" * action needed workers %d", j.workers)
-		return chewWithAction(j.actionNeeded.doAction)
+		return chewWithAction(j.actionStrategy.act)
 	} else {
 		j.Logger.Debug(" * action not needed")
 		return chewWithAction(func(ctx context.Context, para interface{}) (interface{}, error) {
@@ -122,18 +121,18 @@ func (j *Job) run(ctx context.Context, with []interface{}) []Done {
 	return <-j.digest(ctx, j.chew(ctx, j.feed(ctx, with)))
 }
 
-func (j *Job) BatchWanted(bn batchNeeded) *Job {
-	j.batchNeeded = bn
+func (j *Job) BatchWanted(bs batchStrategy) *Job {
+	j.batchStrategy = bs
 	return j
 }
 
-func (j *Job) ActionWanted(an actionNeeded) *Job {
-	j.actionNeeded = an
+func (j *Job) ActionWanted(as actionStrategy) *Job {
+	j.actionStrategy = as
 	return j
 }
 
-func (j *Job) RetryWanted(rn retryNeeded) *Job {
-	j.retryNeeded = rn
+func (j *Job) RetryWanted(rs retryStrategy) *Job {
+	j.retryStrategy = rs
 	return j
 }
 
@@ -142,17 +141,17 @@ func (j *Job) Run(ctx context.Context, with []interface{}) []Done {
 	defer cancelFn()
 	var finalAllDone []Done
 	allDone := j.run(child, with)
-	if j.retryNeeded != nil {
+	if j.retryStrategy != nil {
 		for {
 			var retries []interface{}
 			for _, done := range allDone {
-				if j.retryNeeded.worthRetry(done) {
+				if j.retryStrategy.worth(done) {
 					retries = append(retries, done.P)
 				} else {
 					finalAllDone = append(finalAllDone, done)
 				}
 			}
-			if len(retries) <= 0 || j.retryNeeded.forgoRetry() {
+			if len(retries) <= 0 || j.retryStrategy.forgo() {
 				for _, r := range retries {
 					finalAllDone = append(finalAllDone, Done{r, nil, fmt.Errorf("need more retry")})
 				}
@@ -162,10 +161,10 @@ func (j *Job) Run(ctx context.Context, with []interface{}) []Done {
 				// TODO: if group error has been piped through, then how to do the retry ?
 				j.Logger.Debugf(" * retry started: %d", len(retries))
 				workers := j.workers
-				if j.batchNeeded != nil {
-					workers /= j.batchNeeded.batchSize()
+				if j.batchStrategy != nil {
+					workers /= j.batchStrategy.size()
 				}
-				allDone = NewJob(j.Logger, workers).ActionWanted(j.actionNeeded).run(child, retries)
+				allDone = NewJob(j.Logger, workers).ActionWanted(j.actionStrategy).run(child, retries)
 			}
 		}
 	} else {

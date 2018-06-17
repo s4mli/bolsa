@@ -11,21 +11,21 @@ type job interface {
 	Run(ctx context.Context, with []interface{}) []Done
 }
 
-// group for feeding
-type batchNeeded interface {
-	batchSize() int
-	doBatch(context.Context, []interface{}) (interface{}, error)
+// batch for feeding
+type batchStrategy interface {
+	size() int
+	batch(context.Context, []interface{}) (interface{}, error)
 }
 
 // action for chewing
-type actionNeeded interface {
-	doAction(ctx context.Context, p interface{}) (r interface{}, e error)
+type actionStrategy interface {
+	act(ctx context.Context, p interface{}) (r interface{}, e error)
 }
 
 // retry for Job
-type retryNeeded interface {
-	worthRetry(Done) bool
-	forgoRetry() bool
+type retryStrategy interface {
+	worth(Done) bool
+	forgo() bool
 }
 
 // result for a job which contains Parameter Result and Error

@@ -18,15 +18,15 @@ type reduceJ struct {
 	iterator func(v interface{}, memo interface{}) (interface{}, error)
 }
 
-func (myself *reduceJ) batchSize() int {
+func (myself *reduceJ) size() int {
 	return myself.dataSize
 }
 
-func (*reduceJ) doBatch(ctx context.Context, groupedMash []interface{}) (interface{}, error) {
+func (*reduceJ) batch(ctx context.Context, groupedMash []interface{}) (interface{}, error) {
 	return groupedMash, nil
 }
 
-func (myself *reduceJ) doAction(ctx context.Context, p interface{}) (r interface{}, e error) {
+func (myself *reduceJ) act(ctx context.Context, p interface{}) (r interface{}, e error) {
 	reasons := ""
 	if myself.iterator != nil {
 		if data, ok := p.([]interface{}); !ok {

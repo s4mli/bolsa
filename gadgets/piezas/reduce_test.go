@@ -32,7 +32,7 @@ func testReduceWithSingleError(t *testing.T) {
 	assert.Equal(t, "cast a error|", err.Error())
 }
 
-func testReduceWithMulipleError(t *testing.T) {
+func testReduceWithMultipleError(t *testing.T) {
 	logging.DefaultLogger(fmt.Sprintf(" < %s > ", util.APP_NAME),
 		logging.LogLevelFromString("DEBUG"), 100)
 
@@ -63,7 +63,7 @@ func testReduceWithoutError(t *testing.T) {
 
 func TestReduce(t *testing.T) {
 	testReduceWithSingleError(t)
-	testReduceWithMulipleError(t)
+	testReduceWithMultipleError(t)
 	testReduceWithoutError(t)
 
 }

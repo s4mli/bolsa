@@ -61,17 +61,17 @@ type putJob struct {
 	maxRetry int
 }
 
-// batchNeeded
-func (qt *putJob) batchSize() int {
+// batchStrategy
+func (qt *putJob) size() int {
 	return qt.q.batch
 }
 
-func (qt *putJob) doBatch(ctx context.Context, groupedMash []interface{}) (interface{}, error) {
+func (qt *putJob) batch(ctx context.Context, groupedMash []interface{}) (interface{}, error) {
 	return qt.q.encode(groupedMash)
 }
 
-// actionNeeded
-func (qt *putJob) doAction(ctx context.Context, p interface{}) (r interface{}, e error) {
+// actionStrategy
+func (qt *putJob) act(ctx context.Context, p interface{}) (r interface{}, e error) {
 	if bodyStr, ok := p.(string); ok {
 		params := &sqs.SendMessageInput{
 			MessageBody:  aws.String(bodyStr),
@@ -90,11 +90,12 @@ func (qt *putJob) doAction(ctx context.Context, p interface{}) (r interface{}, e
 	}
 }
 
-func (qt *putJob) worthRetry(done job.Done) bool {
+// retryStrategy
+func (qt *putJob) worth(done job.Done) bool {
 	return done.E != nil
 }
 
-func (qt *putJob) forgoRetry() bool {
+func (qt *putJob) forgo() bool {
 	ended := qt.curRetry >= qt.maxRetry
 	qt.curRetry++
 	return ended

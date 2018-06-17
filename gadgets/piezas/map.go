@@ -13,7 +13,7 @@ type mapJ struct {
 	iterator func(interface{}) (interface{}, error)
 }
 
-func (myself *mapJ) doAction(ctx context.Context, p interface{}) (r interface{}, e error) {
+func (myself *mapJ) act(ctx context.Context, p interface{}) (r interface{}, e error) {
 	if myself.iterator != nil {
 		return myself.iterator(p)
 	} else {
