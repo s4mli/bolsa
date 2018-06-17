@@ -1,71 +1,60 @@
 package piezas
 
 import (
-	"fmt"
-	"reflect"
+	"context"
 	"time"
+
+	"fmt"
+
+	"github.com/samwooo/bolsa/gadgets/job"
+	"github.com/samwooo/bolsa/gadgets/logging"
+	"github.com/samwooo/bolsa/gadgets/util"
 )
 
-type reduce struct{}
-
-func (myself *reduce) apply(f iterator, d, memo reflect.Value) reflect.Value {
-	fn := reflect.Indirect(reflect.ValueOf(f))
-	if fn.Kind() != reflect.Func {
-		err := fmt.Errorf("<< reduce >> Reducer must be a Func, skip")
-		fmt.Println(err.Error())
-		return memo
-	}
-	fnt := fn.Type()
-	if fnt.NumIn() != 2 {
-		err := fmt.Errorf("<< reduce >> Reducer should have 2 and only 2 paras, skip")
-		fmt.Println(err.Error())
-		return memo
-	}
-	if fnt.In(0) != d.Type() {
-		err := fmt.Errorf("<< reduce >> Undercover '%v', skip", d.Interface())
-		fmt.Println(err.Error())
-		return memo
-	}
-	if fnt.In(1) != memo.Type() {
-		err := fmt.Errorf("<< reduce >> Type mismatch '%v', skip", d.Interface())
-		fmt.Println(err.Error())
-		return memo
-	}
-	if fnt.NumOut() != 1 {
-		err := fmt.Errorf("<< reduce >> Reducer should have 1 and only 1 return, skip")
-		fmt.Println(err.Error())
-		return memo
-	}
-	defer func(fn reflect.Value) {
-		if r := recover(); r != nil {
-			fmt.Println("<< reduce >> Recover apply - ", fn.Type(), " -> ", r)
-		}
-	}(fn)
-	return fn.Call([]reflect.Value{d, memo})[0]
+type reduceJ struct {
+	*job.Job
+	dataSize int
+	memo     interface{}
+	iterator func(v interface{}, memo interface{}) (interface{}, error)
 }
 
-func (myself *reduce) reduce(data array, memo interface{}, f iterator) interface{} {
-	done := make(chan reflect.Value)
-	go func(myself *reduce, data array, memo interface{}, f iterator, done chan<- reflect.Value) {
-		a := reflect.Indirect(reflect.ValueOf(data))
-		kind := a.Kind()
-		if kind != reflect.Array && kind != reflect.Slice {
-			done <- myself.apply(f, reflect.ValueOf(data), reflect.ValueOf(memo))
+func (myself *reduceJ) batchSize() int {
+	return myself.dataSize
+}
+
+func (*reduceJ) doBatch(ctx context.Context, groupedMash []interface{}) (interface{}, error) {
+	return groupedMash, nil
+}
+
+func (myself *reduceJ) doAction(ctx context.Context, p interface{}) (r interface{}, e error) {
+	reasons := ""
+	if myself.iterator != nil {
+		if data, ok := p.([]interface{}); !ok {
+			reasons = "cast error"
 		} else {
-			m := reflect.ValueOf(memo)
-			for i := 0; i < a.Len(); i++ {
-				m = myself.apply(f, a.Index(i), m)
+			m := myself.memo
+			for _, d := range data {
+				var err error
+				if m, err = myself.iterator(d, m); err != nil {
+					reasons += err.Error() + "|"
+				}
 			}
-			done <- m
+			myself.memo = m
 		}
-	}(myself, data, memo, f, done)
-	return (<-done).Interface()
+	}
+	return myself.memo, util.ErrorFromString(reasons)
 }
 
-func Reduce(data array, memo interface{}, f iterator) interface{} {
+func Reduce(ctx context.Context, logger logging.Logger, data []interface{}, memo interface{},
+	iterator func(interface{}, interface{}) (interface{}, error)) (interface{}, error) {
+
 	start := time.Now()
-	myself := reduce{}
-	r := myself.reduce(data, memo, f)
-	fmt.Println("<< reduce >> Done in ", time.Since(start))
-	return r
+	r := &reduceJ{job.NewJob(logger, 1), len(data), memo, iterator}
+	done := r.BatchWanted(r).ActionWanted(r).Run(ctx, data)
+	r.Logger.Infof("done in %+v with %+v", time.Since(start), done)
+	if len(done) <= 0 {
+		return memo, fmt.Errorf("unknown error")
+	} else {
+		return done[0].R, done[0].E
+	}
 }

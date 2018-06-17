@@ -3,74 +3,52 @@ package piezas
 import (
 	"testing"
 
+	"fmt"
+
+	"context"
+
+	"github.com/samwooo/bolsa/gadgets/logging"
+	"github.com/samwooo/bolsa/gadgets/util"
 	"github.com/stretchr/testify/assert"
 )
 
-type _everyTester struct{}
-
-func (anonymous *_everyTester) testWithError(t *testing.T) {
-	// Type mismatched then do nothing
-	input := []int64{1, 2, 3, 4, 5, 6, 7, 8, 99}
-	r := Every(input,
-		func(k int) int {
-			return k * k
-		})
-	assert.Equal(t, false, r)
-
-	r = Every(input,
-		func(k int) bool {
-			return true
-		})
-	assert.Equal(t, false, r)
-
-	r = Every(input,
-		func(k int) (bool, error) {
-			return true, nil
-		})
-	assert.Equal(t, false, r)
-
-	r = Every(input,
-		func(k, j int) bool {
-			return true
-		})
-	assert.Equal(t, false, r)
-}
-
-func (anonymous *_everyTester) testWithArray(t *testing.T) {
-	r := Every([9]int64{1, 2, 3, 4, 5, 6, 7, 8, 99},
-		func(k int64) bool {
-			return k < 100
-		})
-	assert.Equal(t, true, r)
-
-	r = Every([9]int64{1, 2, 3, 4, 5, 6, 7, 8, 99},
-		func(k int64) bool {
-			return k < 0
-		})
-	assert.Equal(t, false, r)
-}
-
-func (anonymous *_everyTester) testWithSlice(t *testing.T) {
-	input := []int64{1, 2, 3, 4, 5, 6, 7, 8, 99}
-	for i := 0; i < 9999999; i++ {
-		input = append(input, int64(i))
+var everyIte = func(k interface{}) (bool, error) {
+	if v, ok := k.(int); ok {
+		return v%2 == 0, nil
+	} else {
+		return false, fmt.Errorf("cast error")
 	}
-	r := Every(input,
-		func(k int64) bool {
-			return k < 9999999+1
-		})
-	assert.Equal(t, true, r)
+}
 
-	r = Every(input,
-		func(k int64) bool {
-			return k < 0
-		})
+func testEveryWithError(t *testing.T) {
+	logging.DefaultLogger(fmt.Sprintf(" < %s > ", util.APP_NAME),
+		logging.LogLevelFromString("DEBUG"), 100)
+
+	input := []interface{}{1, 2, 3, 4, 5, 6, 7, 8, "a"}
+	r := Every(context.Background(), logging.GetLogger("every test "), input, everyIte)
 	assert.Equal(t, false, r)
+}
+
+func testEveryWithFalse(t *testing.T) {
+	logging.DefaultLogger(fmt.Sprintf(" < %s > ", util.APP_NAME),
+		logging.LogLevelFromString("DEBUG"), 100)
+
+	input := []interface{}{1, 2, 3, 4, 5, 6, 7, 8}
+	r := Every(context.Background(), logging.GetLogger("every test "), input, everyIte)
+	assert.Equal(t, false, r)
+}
+
+func testEveryWithTrue(t *testing.T) {
+	logging.DefaultLogger(fmt.Sprintf(" < %s > ", util.APP_NAME),
+		logging.LogLevelFromString("DEBUG"), 100)
+
+	input := []interface{}{2, 4, 6, 8}
+	r := Every(context.Background(), logging.GetLogger("every test "), input, everyIte)
+	assert.Equal(t, true, r)
 }
 
 func TestEvery(t *testing.T) {
-	anonymous := _everyTester{}
-	anonymous.testWithError(t)
-	anonymous.testWithSlice(t)
-	anonymous.testWithArray(t)
+	testEveryWithError(t)
+	testEveryWithFalse(t)
+	testEveryWithTrue(t)
 }

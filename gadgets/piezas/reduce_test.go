@@ -1,109 +1,69 @@
 package piezas
 
 import (
-	"strconv"
+	"context"
 	"testing"
 
+	"fmt"
+
+	"github.com/samwooo/bolsa/gadgets/logging"
+	"github.com/samwooo/bolsa/gadgets/util"
 	"github.com/stretchr/testify/assert"
 )
 
-type _reduceTester struct{}
-
-func (anonymous *_reduceTester) testWithError(t *testing.T) {
-	// Type mismatched then do nothing
-	input := []int64{1, 2, 3, 4, 5, 6, 7, 8, 99}
-	r := Reduce(input, 0,
-		func(k int) int {
-			return 1
-		})
-	assert.Equal(t, 0, r)
-
-	r = Reduce(input, 0,
-		func(k int, m int) int {
-			return k + m
-		})
-	assert.Equal(t, 0, r)
-
-	r = Reduce(input, 0,
-		func(k int, m int) int {
-			return k + m
-		})
-	assert.Equal(t, 0, r)
-
-	r = Reduce(input, 0,
-		func(k int, m int) (int, error) {
-			return k + m, nil
-		})
-	assert.Equal(t, 0, r)
+var reduceIte = func(k interface{}, memo interface{}) (interface{}, error) {
+	v, vok := k.(int)
+	m, mok := memo.(int)
+	if vok && mok {
+		return v + m, nil
+	} else {
+		return m, fmt.Errorf("cast %+v error", k)
+	}
 }
 
-func (anonymous *_reduceTester) testWithArray(t *testing.T) {
-	input := [9]int{1, 2, 3, 4, 5, 6, 7, 8, 99}
-	expected := 1 + 2 + 3 + 4 + 5 + 6 + 7 + 8 + 99
-	r := Reduce(input, 0,
-		func(k, memo int) int {
-			return memo + k
-		})
-	assert.Equal(t, expected, r)
+func testReduceWithSingleError(t *testing.T) {
+	logging.DefaultLogger(fmt.Sprintf(" < %s > ", util.APP_NAME),
+		logging.LogLevelFromString("DEBUG"), 100)
 
-	r = Reduce([9]string{"1", "2", "3", "4", "5", "6", "7", "8", "99"}, 0,
-		func(k string, memo int) int {
-			r, err := strconv.Atoi(k)
-			if err != nil {
-				return memo
-			} else {
-				return memo + r
-			}
-		})
-	assert.Equal(t, expected, r)
+	input := []interface{}{1, 2, 3, 4, 5, 6, 7, 8, "a"}
+	memo := 0
+	r, err := Reduce(context.Background(), logging.GetLogger("reduce test "), input, memo, reduceIte)
+	assert.Equal(t, 36, r)
+	assert.Equal(t, "cast a error|", err.Error())
 }
 
-func (anonymous *_reduceTester) testWithSlice(t *testing.T) {
-	input := []int{1, 2, 3, 4, 5, 6, 7, 8, 99}
-	expected := 1 + 2 + 3 + 4 + 5 + 6 + 7 + 8 + 99
-	r := Reduce(input, 0,
-		func(k, memo int) int {
-			return memo + k
-		})
-	assert.Equal(t, expected, r)
+func testReduceWithMulipleError(t *testing.T) {
+	logging.DefaultLogger(fmt.Sprintf(" < %s > ", util.APP_NAME),
+		logging.LogLevelFromString("DEBUG"), 100)
 
-	r = Reduce([]string{"1", "2", "3", "4", "5", "6", "7", "8", "99"}, 0,
-		func(k string, memo int) int {
-			r, err := strconv.Atoi(k)
-			if err != nil {
-				return memo
-			} else {
-				return memo + r
-			}
-		})
-	assert.Equal(t, expected, r)
+	input := []interface{}{
+		1, 2, 3, 4, 5, 6, 7, 8,
+		1, 2, 3, 4, 5, 6, 7, 8,
+		1, 2, 3, 4, 5, 6, 7, 8,
+		1, 2, 3, 4, 5, 6, 7, 8,
+		1, 2, 3, 4, 5, 6, 7, 8,
+		"a", "b", "c",
+	}
+	memo := 0
+	r, err := Reduce(context.Background(), logging.GetLogger("reduce test "), input, memo, reduceIte)
+	assert.Equal(t, 180, r)
+	assert.Equal(t, "cast a error|cast b error|cast c error|", err.Error())
 }
 
-func (anonymous *_reduceTester) testWithSinglePara(t *testing.T) {
-	input := 99
-	expected := 99
-	r := Reduce(input, 0,
-		func(k, memo int) int {
-			return memo + k
-		})
-	assert.Equal(t, expected, r)
+func testReduceWithoutError(t *testing.T) {
+	logging.DefaultLogger(fmt.Sprintf(" < %s > ", util.APP_NAME),
+		logging.LogLevelFromString("DEBUG"), 100)
 
-	r = Reduce("99", 0,
-		func(k string, memo int) int {
-			r, err := strconv.Atoi(k)
-			if err != nil {
-				return memo
-			} else {
-				return memo + r
-			}
-		})
-	assert.Equal(t, expected, r)
+	input := []interface{}{1, 2, 3, 4, 5, 6, 7, 8}
+	memo := 0
+	r, err := Reduce(context.Background(), logging.GetLogger("reduce test "), input, memo, reduceIte)
+	assert.Equal(t, 36, r)
+	assert.Equal(t, nil, err)
 }
 
 func TestReduce(t *testing.T) {
-	anonymous := _reduceTester{}
-	anonymous.testWithError(t)
-	anonymous.testWithSlice(t)
-	anonymous.testWithArray(t)
-	anonymous.testWithSinglePara(t)
+	testReduceWithSingleError(t)
+	testReduceWithMulipleError(t)
+	testReduceWithoutError(t)
+
 }

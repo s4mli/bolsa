@@ -11,7 +11,7 @@ const (
 	DEBUG LogLevel = iota
 	INFO
 	WARN
-	ERR
+	ERROR
 )
 
 func LogLevelFromString(s string) LogLevel {
@@ -22,8 +22,8 @@ func LogLevelFromString(s string) LogLevel {
 		return INFO
 	case "warn":
 		return WARN
-	case "err":
-		return ERR
+	case "error":
+		return ERROR
 	default:
 		return INFO
 	}
@@ -37,8 +37,8 @@ func (l LogLevel) String() string {
 		return "INFO"
 	case WARN:
 		return "WARN"
-	case ERR:
-		return "ERR"
+	case ERROR:
+		return "ERROR"
 	default:
 		panic(fmt.Errorf("unknown log level"))
 	}
@@ -53,12 +53,12 @@ type logger struct {
 func (l *logger) Debug(msg interface{}) { l.message(DEBUG, msg) }
 func (l *logger) Info(msg interface{})  { l.message(INFO, msg) }
 func (l *logger) Warn(msg interface{})  { l.message(WARN, msg) }
-func (l *logger) Err(msg interface{})   { l.message(ERR, msg) }
+func (l *logger) Error(msg interface{}) { l.message(ERROR, msg) }
 
 func (l *logger) Debugf(f string, a ...interface{}) { l.Debug(fmt.Sprintf(f, a...)) }
 func (l *logger) Infof(f string, a ...interface{})  { l.Info(fmt.Sprintf(f, a...)) }
 func (l *logger) Warnf(f string, a ...interface{})  { l.Warn(fmt.Sprintf(f, a...)) }
-func (l *logger) Errf(f string, a ...interface{})   { l.Err(fmt.Sprintf(f, a...)) }
+func (l *logger) Errorf(f string, a ...interface{}) { l.Error(fmt.Sprintf(f, a...)) }
 
 func (l *logger) filter(lvl LogLevel, msg interface{}) (bool, interface{}) {
 	for _, f := range l.filters {

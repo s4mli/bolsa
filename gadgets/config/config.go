@@ -3,7 +3,6 @@ package config
 import (
 	"fmt"
 	"io/ioutil"
-	"math"
 	"reflect"
 
 	"github.com/samwooo/bolsa/gadgets/util"

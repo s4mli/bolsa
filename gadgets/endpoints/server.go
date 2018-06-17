@@ -29,7 +29,7 @@ func (s *Server) RegisterHandleFn(fn http.HandlerFunc, paths ...string) {
 func (s *Server) Start() error {
 	s.Logger.Infof("listening on port: %s", s.port)
 	if err := http.ListenAndServe(s.port, nil); err != nil {
-		s.Logger.Err(err)
+		s.Logger.Error(err)
 		return err
 	}
 	return nil

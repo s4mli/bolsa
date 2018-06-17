@@ -1,120 +1,51 @@
 package piezas
 
 import (
+	"context"
+	"fmt"
 	"testing"
 
+	"github.com/samwooo/bolsa/gadgets/logging"
+	"github.com/samwooo/bolsa/gadgets/util"
 	"github.com/stretchr/testify/assert"
 )
 
-type _mapTester struct{}
+var mapIte = func(k interface{}) (interface{}, error) {
+	if v, ok := k.(int); ok {
+		return v + 1, nil
+	} else {
+		return nil, fmt.Errorf("cast error")
+	}
+}
 
-func (anonymous *_mapTester) testWithError(t *testing.T) {
-	// Type mismatched then do nothing
-	input := []int64{1, 2, 3, 4, 5, 6, 7, 8, 99}
-	r := Map(input,
-		func(k int) int {
-			return k * k
-		}, true)
+func testMapWithError(t *testing.T) {
+	logging.DefaultLogger(fmt.Sprintf(" < %s > ", util.APP_NAME),
+		logging.LogLevelFromString("DEBUG"), 100)
+
+	input := []interface{}{1, 2, 3, 4, 5, 6, 7, 8, "a"}
+	r := Map(context.Background(), logging.GetLogger("map test "), input, mapIte)
+	assert.Equal(t, len(input)-1, len(r))
+	for _, v := range input {
+		if vi, ok := v.(int); ok {
+			assert.Equal(t, true, util.IsIn(vi+1, r))
+		}
+	}
+}
+
+func testMapWithoutError(t *testing.T) {
+	logging.DefaultLogger(fmt.Sprintf(" < %s > ", util.APP_NAME),
+		logging.LogLevelFromString("DEBUG"), 100)
+
+	input := []interface{}{1, 2, 3, 4, 5, 6, 7, 8}
+	r := Map(context.Background(), logging.GetLogger("map test "), input, mapIte)
 	assert.Equal(t, len(input), len(r))
-	for index, v := range input {
-		assert.Equal(t, v, r[index])
-	}
-}
-
-func (anonymous *_mapTester) testWithArray(t *testing.T) {
-	r := Map([9]int64{1, 2, 3, 4, 5, 6, 7, 8, 99},
-		func(k int64) int64 {
-			return k * k
-		}, true)
-
-	expected := [9]int64{1, 4, 9, 16, 25, 36, 49, 64, 9801}
-	assert.Equal(t, len(expected), len(r))
-	for index, v := range expected {
-		assert.Equal(t, v, r[index])
-	}
-
-	r = Map([9]int64{1, 2, 3, 4, 5, 6, 7, 8, 99},
-		func(k int64) int64 {
-			return k * k
-		}, false)
-
-	assert.Equal(t, len(expected), len(r))
-	for _, actual := range r {
-		found := false
-		for _, v := range expected {
-			if v == actual {
-				found = true
-				break
-			}
-		}
-		assert.Equal(t, true, found)
-	}
-}
-
-func (anonymous *_mapTester) testWithSlice(t *testing.T) {
-	r := Map([]int64{1, 2, 3, 4, 5, 6, 7, 8, 99},
-		func(k int64) int64 {
-			return k * k
-		}, true)
-
-	expected := []int64{1, 4, 9, 16, 25, 36, 49, 64, 9801}
-	assert.Equal(t, len(expected), len(r))
-	for index, v := range expected {
-		assert.Equal(t, v, r[index])
-	}
-
-	r = Map([]int64{1, 2, 3, 4, 5, 6, 7, 8, 99},
-		func(k int64) int64 {
-			return k * k
-		}, false)
-
-	assert.Equal(t, len(expected), len(r))
-	for _, actual := range r {
-		found := false
-		for _, v := range expected {
-			if v == actual {
-				found = true
-				break
-			}
-		}
-		assert.Equal(t, true, found)
-	}
-}
-
-func (anonymous *_mapTester) testWithSinglePara(t *testing.T) {
-	r := Map(99,
-		func(k int) int {
-			return k * k
-		}, true)
-
-	expected := []int{9801}
-	assert.Equal(t, len(expected), len(r))
-	for index, v := range expected {
-		assert.Equal(t, v, r[index])
-	}
-
-	r = Map([]int{99},
-		func(k int) int {
-			return k * k
-		}, false)
-
-	assert.Equal(t, len(expected), len(r))
-	for _, actual := range r {
-		found := false
-		for _, v := range expected {
-			if v == actual {
-				found = true
-				break
-			}
-		}
-		assert.Equal(t, true, found)
+	for _, v := range input {
+		vi, _ := v.(int)
+		assert.Equal(t, true, util.IsIn(vi+1, r))
 	}
 }
 
 func TestMap(t *testing.T) {
-	anonymous := _mapTester{}
-	anonymous.testWithError(t)
-	anonymous.testWithSlice(t)
-	anonymous.testWithArray(t)
-	anonymous.testWithSinglePara(t)
+	testMapWithError(t)
+	testMapWithoutError(t)
 }
