@@ -37,8 +37,8 @@ func (j *Job) feed(ctx context.Context, mash []interface{}) <-chan interface{} {
 			}
 			go func(groupedMash []interface{}, in chan<- interface{}, waiter chan<- bool) {
 				if data, err := batch(ctx, groupedMash); err != nil {
+					// TODO: how to handle batch error gracefully
 					j.Logger.Errorf("batch( %d ) failed( %s ) for %+v", batchSize, err.Error(), groupedMash)
-					in <- Done{groupedMash, nil, fmt.Errorf("batch error: %s", err.Error())}
 				} else {
 					j.Logger.Debugf("batch( %d ) done( %+v ) for %+v", batchSize, data, groupedMash)
 					in <- data
@@ -158,7 +158,6 @@ func (j *Job) Run(ctx context.Context, with []interface{}) []Done {
 				j.Logger.Debug(" * retry ended")
 				break
 			} else {
-				// TODO: if group error has been piped through, then how to do the retry ?
 				j.Logger.Debugf(" * retry started: %d", len(retries))
 				workers := j.workers
 				if j.batchStrategy != nil {
