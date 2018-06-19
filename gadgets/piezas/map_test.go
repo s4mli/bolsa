@@ -22,7 +22,7 @@ func testMapWithError(t *testing.T) {
 	logging.DefaultLogger(fmt.Sprintf(" < %s > ", util.APP_NAME),
 		logging.LogLevelFromString("DEBUG"), 100)
 
-	input := []interface{}{1, 2, 3, 4, 5, 6, 7, 8, "a"}
+	input := []interface{}{1, 2, 3, 4, 5, 6, 7, 8, fmt.Errorf("a")}
 	r := Map(context.Background(), logging.GetLogger("map test "), input, mapIte)
 	assert.Equal(t, len(input)-1, len(r))
 	for _, v := range input {

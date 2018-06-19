@@ -25,7 +25,7 @@ func testReduceWithSingleError(t *testing.T) {
 	logging.DefaultLogger(fmt.Sprintf(" < %s > ", util.APP_NAME),
 		logging.LogLevelFromString("DEBUG"), 100)
 
-	input := []interface{}{1, 2, 3, 4, 5, 6, 7, 8, "a"}
+	input := []interface{}{1, 2, 3, 4, 5, 6, 7, 8, fmt.Errorf("a")}
 	memo := 0
 	r, err := Reduce(context.Background(), logging.GetLogger("reduce test "), input, memo, reduceIte)
 	assert.Equal(t, 36, r)
@@ -42,7 +42,7 @@ func testReduceWithMultipleError(t *testing.T) {
 		1, 2, 3, 4, 5, 6, 7, 8,
 		1, 2, 3, 4, 5, 6, 7, 8,
 		1, 2, 3, 4, 5, 6, 7, 8,
-		"a", "b", "c",
+		fmt.Errorf("a"), fmt.Errorf("b"), fmt.Errorf("c"),
 	}
 	memo := 0
 	r, err := Reduce(context.Background(), logging.GetLogger("reduce test "), input, memo, reduceIte)
