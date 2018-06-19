@@ -118,10 +118,10 @@ func (j *Job) chew(ctx context.Context, in <-chan interface{}) <-chan Done {
 					} else {
 						ret, err := action(ctx, para)
 						if err != nil {
-							j.Logger.Errorf("× action failed( %+v ) %s ", para, err.Error())
+							j.Logger.Errorf("× action failed ( %+v ) %s ", para, err.Error())
 							out <- Done{para, ret, newError(Action, err)}
 						} else {
-							j.Logger.Debugf("√ action done( %+v ) %+v", para, ret)
+							j.Logger.Debugf("√ action done ( %+v ) %+v", para, ret)
 							out <- Done{para, ret, nil}
 						}
 					}
