@@ -24,7 +24,7 @@ func testEveryWithError(t *testing.T) {
 	logging.DefaultLogger(fmt.Sprintf(" < %s > ", util.APP_NAME),
 		logging.LogLevelFromString("DEBUG"), 100)
 
-	input := []interface{}{1, 2, 3, 4, 5, 6, 7, 8, fmt.Errorf("a")}
+	input := []interface{}{1, 2, 3, 4, 5, 6, 7, 8, "abc"}
 	r := Every(context.Background(), logging.GetLogger("every test "), input, everyIte)
 	assert.Equal(t, false, r)
 }
