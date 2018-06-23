@@ -6,6 +6,8 @@ import (
 
 	"fmt"
 
+	"strings"
+
 	"github.com/samwooo/bolsa/gadgets/job"
 	"github.com/samwooo/bolsa/gadgets/logging"
 	"github.com/samwooo/bolsa/gadgets/util"
@@ -27,22 +29,22 @@ func (*reduceJ) batch(ctx context.Context, groupedMash []interface{}) (interface
 }
 
 func (myself *reduceJ) act(ctx context.Context, p interface{}) (r interface{}, e error) {
-	reasons := ""
+	var reasons []string
 	if myself.iterator != nil {
 		if data, ok := p.([]interface{}); !ok {
-			reasons = "cast error"
+			reasons = append(reasons, fmt.Sprintf("cast %+v error", p))
 		} else {
 			m := myself.memo
 			for _, d := range data {
 				var err error
 				if m, err = myself.iterator(d, m); err != nil {
-					reasons += err.Error() + "|"
+					reasons = append(reasons, err.Error())
 				}
 			}
 			myself.memo = m
 		}
 	}
-	return myself.memo, util.ErrorFromString(reasons)
+	return myself.memo, util.ErrorFromString(strings.Join(reasons, " | "))
 }
 
 func Reduce(ctx context.Context, logger logging.Logger, data []interface{}, memo interface{},
