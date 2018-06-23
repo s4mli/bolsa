@@ -77,7 +77,10 @@ func (j *Job) feed(ctx context.Context, mash []interface{}) <-chan interface{} {
 			go func(groupedMash []interface{}, in chan<- interface{}, waiter chan<- bool) {
 				if data, err := batch(ctx, groupedMash); err != nil {
 					j.Logger.Errorf("× batch failed ( %+v ) %s", groupedMash, err.Error())
-					in <- Done{groupedMash, data, newError(Batch, err)}
+					in <- Done{
+						groupedMash,
+						data,
+						newError(Batch, fmt.Errorf("( %+v, %s )", groupedMash, err.Error()))}
 				} else {
 					j.Logger.Debugf("√ batch done ( %+v ) %+v", groupedMash, data)
 					in <- data
@@ -114,13 +117,16 @@ func (j *Job) chew(ctx context.Context, in <-chan interface{}) <-chan Done {
 			go func(in <-chan interface{}, out chan<- Done, waiter chan<- bool) {
 				for para := range in {
 					if done, ok := para.(Done); ok {
-						j.Logger.Debugf("√ action done, pipe batch error ( %s ) through", done.E.Error())
+						j.Logger.Debugf("√ action done, pipe error ( %s ) through", done.E.Error())
 						out <- done // batch error
 					} else {
 						ret, err := action(ctx, para)
 						if err != nil {
 							j.Logger.Errorf("× action failed ( %+v ) %s ", para, err.Error())
-							out <- Done{para, ret, newError(Action, err)}
+							out <- Done{
+								para,
+								ret, // be tolerant with error, keep last successful ret
+								newError(Action, fmt.Errorf("( %+v, %s )", para, err.Error()))}
 						} else {
 							j.Logger.Debugf("√ action done ( %+v ) %+v", para, ret)
 							out <- Done{para, ret, nil}
@@ -198,31 +204,33 @@ func (j *Job) Run(ctx context.Context, with []interface{}) []Done {
 		finalAllDone = allDone
 	} else {
 		for {
-			var actionRetries []interface{}
 			var batchRetries []interface{}
+			var batchFailed []Done
+			var actionRetries []interface{}
+			var actionFailed []Done
 			for _, done := range allDone {
-				if done.E != nil && j.retryStrategy.worth(done) { // no error then skip retry even you say its worthy
+				if done.E != nil && j.retryStrategy.worth(done) { // with error and worth retry then retry
 					if e, ok := done.E.(*Error); ok && e.Strategy == Batch {
 						if groupedPara, isArray := done.P.([]interface{}); isArray {
 							batchRetries = append(batchRetries, groupedPara...)
+							for _, para := range groupedPara {
+								batchFailed = append(batchFailed, Done{para, nil, done.E})
+							}
 						} else {
 							j.Logger.Error("× cast para failed, skip retry")
 						}
 					} else {
 						actionRetries = append(actionRetries, done.P)
+						actionFailed = append(actionFailed, done)
 					}
-				} else {
+				} else { // no error or not worth retry
 					finalAllDone = append(finalAllDone, done)
 				}
 			}
 
 			if j.retryStrategy.forgo() || (len(actionRetries) <= 0 && len(batchRetries) <= 0) {
-				for _, ar := range actionRetries {
-					finalAllDone = append(finalAllDone, Done{ar, nil, fmt.Errorf("action ×")})
-				}
-				for _, br := range batchRetries {
-					finalAllDone = append(finalAllDone, Done{br, nil, fmt.Errorf("batch ×")})
-				}
+				finalAllDone = append(finalAllDone, batchFailed...)
+				finalAllDone = append(finalAllDone, actionFailed...)
 				j.Logger.Debug("√ retry ended")
 				break
 			} else {

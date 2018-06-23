@@ -28,7 +28,7 @@ func TestEach(t *testing.T) {
 	assert.Equal(t, len(input), len(r))
 	for _, done := range r {
 		if done.E != nil {
-			assert.Equal(t, "× action failed: cast error", done.E.Error())
+			assert.Equal(t, "× action failed: ( abc, cast error )", done.E.Error())
 		} else {
 			v, ok := done.P.(int)
 			assert.Equal(t, true, ok)

@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"testing"
 
+	"strings"
+
 	"github.com/samwooo/bolsa/gadgets/logging"
 	"github.com/samwooo/bolsa/gadgets/util"
 	"github.com/stretchr/testify/assert"
@@ -14,7 +16,7 @@ type batch1WithError struct{}
 
 func (b *batch1WithError) size() int { return 1 }
 func (b *batch1WithError) batch(context.Context, []interface{}) (interface{}, error) {
-	return nil, fmt.Errorf("batch1 with error")
+	return nil, fmt.Errorf("test batch1WithError")
 }
 
 type batch1WithoutError struct{}
@@ -28,7 +30,7 @@ type batchNWithError struct{ n int }
 
 func (b *batchNWithError) size() int { return b.n }
 func (b *batchNWithError) batch(context.Context, []interface{}) (interface{}, error) {
-	return nil, fmt.Errorf("batch%d with error", b.n)
+	return nil, fmt.Errorf("test batch%dWithError", b.n)
 }
 
 type batchNWithoutError struct{ n int }
@@ -41,7 +43,7 @@ func (b *batchNWithoutError) batch(ctx context.Context, groupedMash []interface{
 type actionWithError struct{}
 
 func (a *actionWithError) act(ctx context.Context, p interface{}) (r interface{}, e error) {
-	return nil, fmt.Errorf("action with error")
+	return nil, fmt.Errorf("test actionWithError")
 }
 
 type actionWithoutError struct{}
@@ -94,7 +96,7 @@ func TestJobWithNoBatchButActionError(t *testing.T) {
 	for _, done := range allDone {
 		assert.Equal(t, true, util.IsIn(done.P, with))
 		assert.Equal(t, nil, done.R)
-		assert.Equal(t, "action ×", done.E.Error())
+		assert.Equal(t, fmt.Sprintf("× action failed: ( %+v, test actionWithError )", done.P), done.E.Error())
 	}
 }
 
@@ -118,7 +120,9 @@ func TestJobBatch1WithErrorNoAction(t *testing.T) {
 	for _, done := range allDone {
 		assert.Equal(t, true, util.IsIn(done.P, with))
 		assert.Equal(t, nil, done.R)
-		assert.Equal(t, "batch ×", done.E.Error())
+		assert.Equal(t,
+			fmt.Sprintf("× batch failed: ( %+v, test batch1WithError )", []interface{}{done.P}),
+			done.E.Error())
 	}
 }
 
@@ -130,7 +134,9 @@ func TestJobBatch1WithErrorActionWithError(t *testing.T) {
 	for _, done := range allDone {
 		assert.Equal(t, true, util.IsIn(done.P, with))
 		assert.Equal(t, nil, done.R)
-		assert.Equal(t, "batch ×", done.E.Error())
+		assert.Equal(t,
+			fmt.Sprintf("× batch failed: ( %+v, test batch1WithError )", []interface{}{done.P}),
+			done.E.Error())
 	}
 }
 
@@ -142,7 +148,9 @@ func TestJobBatch1WithErrorActionWithoutError(t *testing.T) {
 	for _, done := range allDone {
 		assert.Equal(t, true, util.IsIn(done.P, with))
 		assert.Equal(t, nil, done.R)
-		assert.Equal(t, "batch ×", done.E.Error())
+		assert.Equal(t,
+			fmt.Sprintf("× batch failed: ( %+v, test batch1WithError )", []interface{}{done.P}),
+			done.E.Error())
 	}
 }
 
@@ -166,7 +174,9 @@ func TestJobBatch1WithoutErrorActionWithError(t *testing.T) {
 	for _, done := range allDone {
 		assert.Equal(t, true, util.IsIn(done.P, with))
 		assert.Equal(t, nil, done.R)
-		assert.Equal(t, "action ×", done.E.Error())
+		assert.Equal(t,
+			fmt.Sprintf("× action failed: ( %+v, test actionWithError )", done.P),
+			done.E.Error())
 	}
 }
 
@@ -191,7 +201,9 @@ func TestJobBatchNWithErrorNoAction(t *testing.T) {
 	for _, done := range allDone {
 		assert.Equal(t, true, util.IsIn(done.P, with))
 		assert.Equal(t, nil, done.R)
-		assert.Equal(t, "batch ×", done.E.Error())
+		assert.Equal(t, true, strings.Contains(done.E.Error(), "× batch failed: ( ["))
+		assert.Equal(t, true, strings.Contains(done.E.Error(), fmt.Sprintf("%+v", done.P)))
+		assert.Equal(t, true, strings.Contains(done.E.Error(), "], test batch3WithError )"))
 	}
 }
 
@@ -204,7 +216,9 @@ func TestJobBatchNWithErrorActionWithError(t *testing.T) {
 	for _, done := range allDone {
 		assert.Equal(t, true, util.IsIn(done.P, with))
 		assert.Equal(t, nil, done.R)
-		assert.Equal(t, "batch ×", done.E.Error())
+		assert.Equal(t, true, strings.Contains(done.E.Error(), "× batch failed: ( ["))
+		assert.Equal(t, true, strings.Contains(done.E.Error(), fmt.Sprintf("%+v", done.P)))
+		assert.Equal(t, true, strings.Contains(done.E.Error(), "], test batch3WithError )"))
 	}
 }
 
@@ -217,7 +231,9 @@ func TestJobBatchNWithErrorActionWithoutError(t *testing.T) {
 	for _, done := range allDone {
 		assert.Equal(t, true, util.IsIn(done.P, with))
 		assert.Equal(t, nil, done.R)
-		assert.Equal(t, "batch ×", done.E.Error())
+		assert.Equal(t, true, strings.Contains(done.E.Error(), "× batch failed: ( ["))
+		assert.Equal(t, true, strings.Contains(done.E.Error(), fmt.Sprintf("%+v", done.P)))
+		assert.Equal(t, true, strings.Contains(done.E.Error(), "], test batch3WithError )"))
 	}
 }
 
@@ -243,7 +259,7 @@ func TestJobBatchNWithoutErrorActionWithError(t *testing.T) {
 	for _, done := range allDone {
 		assert.Equal(t, true, util.IsIn(done.P, with))
 		assert.Equal(t, nil, done.R)
-		assert.Equal(t, "action ×", done.E.Error())
+		assert.Equal(t, fmt.Sprintf("× action failed: ( %+v, test actionWithError )", done.P), done.E.Error())
 	}
 }
 
