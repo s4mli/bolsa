@@ -114,6 +114,7 @@ func (j *Job) chew(ctx context.Context, in <-chan interface{}) <-chan Done {
 			go func(in <-chan interface{}, out chan<- Done, waiter chan<- bool) {
 				for para := range in {
 					if done, ok := para.(Done); ok {
+						j.Logger.Debugf("√ action done, pipe batch error ( %s ) through", done.E.Error())
 						out <- done // batch error
 					} else {
 						ret, err := action(ctx, para)
@@ -193,6 +194,7 @@ func (j *Job) Run(ctx context.Context, with []interface{}) []Done {
 	var finalAllDone []Done
 	allDone := j.run(child, with)
 	if j.retryStrategy == nil {
+		j.Logger.Debugf("retry ×")
 		finalAllDone = allDone
 	} else {
 		for {
