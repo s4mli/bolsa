@@ -67,6 +67,8 @@ func (jt *JobTester) forgo() bool {
 	return ended
 }
 
+func (jt *JobTester) onError(error) {}
+
 func newJobTester(bs batchStrategy, as actionStrategy) *JobTester {
 	logging.DefaultLogger(fmt.Sprintf(" < %s > ", util.APP_NAME),
 		logging.LogLevelFromString("DEBUG"), 100)

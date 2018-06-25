@@ -26,6 +26,7 @@ type actionStrategy interface {
 type retryStrategy interface {
 	worth(Done) bool
 	forgo() bool
+	onError(error)
 }
 
 // result for a job which contains Parameter Result and Error

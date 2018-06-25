@@ -210,6 +210,7 @@ func (j *Job) Run(ctx context.Context, with []interface{}) []Done {
 			var actionFailed []Done
 			for _, done := range allDone {
 				if done.E != nil && j.retryStrategy.worth(done) { // with error and worth retry then retry
+					j.retryStrategy.onError(done.E)
 					if e, ok := done.E.(*Error); ok && e.Strategy == Batch {
 						if groupedPara, isArray := done.P.([]interface{}); isArray {
 							batchRetries = append(batchRetries, groupedPara...)
