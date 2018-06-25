@@ -12,16 +12,16 @@ import (
 	"github.com/samwooo/bolsa/gadgets/logging"
 )
 
-type strategyType int
+type handlerType int
 
 const (
-	Batch strategyType = iota
+	Batch handlerType = iota
 	Action
 	Retry
 )
 
-func (st *strategyType) String() string {
-	switch *st {
+func (ht *handlerType) String() string {
+	switch *ht {
 	case Batch:
 		return "batch"
 	case Action:
@@ -35,16 +35,16 @@ func (st *strategyType) String() string {
 ////////////
 // Error //
 type Error struct {
-	Strategy strategyType
+	handler handlerType
 	error
 }
 
 func (je Error) Error() string {
-	return fmt.Sprintf("× %s failed: %s", je.Strategy.String(), je.error.Error())
+	return fmt.Sprintf("× %s failed: %s", je.handler.String(), je.error.Error())
 }
 
-func newError(st strategyType, err error) *Error {
-	return &Error{st, err}
+func newError(ht handlerType, err error) *Error {
+	return &Error{ht, err}
 }
 
 //////////
@@ -52,9 +52,10 @@ func newError(st strategyType, err error) *Error {
 type Job struct {
 	Logger  logging.Logger
 	workers int
-	batchStrategy
-	actionStrategy
-	retryStrategy
+	batchHandler
+	actionHandler
+	retryHandler
+	errorHandler
 }
 
 func (j *Job) feed(ctx context.Context, mash []interface{}) <-chan interface{} {
@@ -96,9 +97,9 @@ func (j *Job) feed(ctx context.Context, mash []interface{}) <-chan interface{} {
 		}(in, waiter)
 		return in
 	}
-	if j.batchStrategy != nil {
-		j.Logger.Debugf("batch √ size %d", j.batchStrategy.size())
-		return feedWithBatch(j.batchStrategy.size(), j.batchStrategy.batch)
+	if j.batchHandler != nil {
+		j.Logger.Debugf("batch √ size %d", j.batchHandler.size())
+		return feedWithBatch(j.batchHandler.size(), j.batchHandler.batch)
 	} else {
 		j.Logger.Debug("batch ×")
 		return feedWithBatch(1, func(ctx context.Context, mash []interface{}) (interface{}, error) {
@@ -144,9 +145,9 @@ func (j *Job) chew(ctx context.Context, in <-chan interface{}) <-chan Done {
 		}(out, waiter)
 		return out
 	}
-	if j.actionStrategy != nil {
+	if j.actionHandler != nil {
 		j.Logger.Debugf("action √ workers %d", j.workers)
-		return chewWithAction(j.actionStrategy.act)
+		return chewWithAction(j.actionHandler.act)
 	} else {
 		j.Logger.Debug("action ×")
 		return chewWithAction(func(ctx context.Context, para interface{}) (interface{}, error) {
@@ -160,6 +161,9 @@ func (j *Job) digest(ctx context.Context, out <-chan Done) <-chan []Done {
 	go func(out <-chan Done, output chan<- []Done) {
 		var results []Done
 		for r := range out {
+			if r.E != nil && j.errorHandler != nil {
+				j.errorHandler.onError(r.E)
+			}
 			results = append(results, r)
 		}
 		output <- results
@@ -173,22 +177,27 @@ func (j *Job) run(ctx context.Context, with []interface{}) []Done {
 
 ////////////////
 // Set Batch //
-func (j *Job) BatchWanted(bs batchStrategy) *Job {
-	j.batchStrategy = bs
+func (j *Job) BatchHandler(bh batchHandler) *Job {
+	j.batchHandler = bh
 	return j
 }
 
 /////////////////
 // Set Action //
-func (j *Job) ActionWanted(as actionStrategy) *Job {
-	j.actionStrategy = as
+func (j *Job) ActionHandler(ah actionHandler) *Job {
+	j.actionHandler = ah
 	return j
 }
 
 ////////////////
 // Set Retry //
-func (j *Job) RetryWanted(rs retryStrategy) *Job {
-	j.retryStrategy = rs
+func (j *Job) RetryHandler(rh retryHandler) *Job {
+	j.retryHandler = rh
+	return j
+}
+
+func (j *Job) ErrorHandler(eh errorHandler) *Job {
+	j.errorHandler = eh
 	return j
 }
 
@@ -199,7 +208,7 @@ func (j *Job) Run(ctx context.Context, with []interface{}) []Done {
 
 	var finalAllDone []Done
 	allDone := j.run(child, with)
-	if j.retryStrategy == nil {
+	if j.retryHandler == nil {
 		j.Logger.Debugf("retry ×")
 		finalAllDone = allDone
 	} else {
@@ -209,9 +218,8 @@ func (j *Job) Run(ctx context.Context, with []interface{}) []Done {
 			var actionRetries []interface{}
 			var actionFailed []Done
 			for _, done := range allDone {
-				if done.E != nil && j.retryStrategy.worth(done) { // with error and worth retry then retry
-					j.retryStrategy.onError(done.E)
-					if e, ok := done.E.(*Error); ok && e.Strategy == Batch {
+				if done.E != nil && j.retryHandler.worth(done) { // with error and worth retry then retry
+					if e, ok := done.E.(*Error); ok && e.handler == Batch {
 						if groupedPara, isArray := done.P.([]interface{}); isArray {
 							batchRetries = append(batchRetries, groupedPara...)
 							for _, para := range groupedPara {
@@ -229,7 +237,7 @@ func (j *Job) Run(ctx context.Context, with []interface{}) []Done {
 				}
 			}
 
-			if j.retryStrategy.forgo() || (len(actionRetries) <= 0 && len(batchRetries) <= 0) {
+			if j.retryHandler.forgo() || (len(actionRetries) <= 0 && len(batchRetries) <= 0) {
 				finalAllDone = append(finalAllDone, batchFailed...)
 				finalAllDone = append(finalAllDone, actionFailed...)
 				j.Logger.Debug("√ retry ended")
@@ -238,12 +246,12 @@ func (j *Job) Run(ctx context.Context, with []interface{}) []Done {
 				j.Logger.Debugf("√ retry started ( batch %d, action %d )", len(batchRetries), len(actionRetries))
 				allDone = []Done{}
 				if len(actionRetries) > 0 {
-					allDone = append(allDone, NewJob(j.Logger, j.workers).ActionWanted(
-						j.actionStrategy).run(child, actionRetries)...)
+					allDone = append(allDone, NewJob(j.Logger, j.workers).ActionHandler(
+						j.actionHandler).run(child, actionRetries)...)
 				}
 				if len(batchRetries) > 0 {
-					allDone = append(allDone, NewJob(j.Logger, j.workers).BatchWanted(j.batchStrategy).ActionWanted(
-						j.actionStrategy).run(child, batchRetries)...)
+					allDone = append(allDone, NewJob(j.Logger, j.workers).BatchHandler(j.batchHandler).ActionHandler(
+						j.actionHandler).run(child, batchRetries)...)
 				}
 			}
 		}
@@ -256,5 +264,7 @@ func NewJob(logger logging.Logger, workers int) *Job {
 	if workers <= 0 {
 		workers = runtime.NumCPU() * 64
 	}
-	return &Job{logger, workers, nil, nil, nil}
+	return &Job{logger, workers,
+		nil, nil,
+		nil, nil}
 }

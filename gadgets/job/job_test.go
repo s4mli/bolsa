@@ -69,12 +69,12 @@ func (jt *JobTester) forgo() bool {
 
 func (jt *JobTester) onError(error) {}
 
-func newJobTester(bs batchStrategy, as actionStrategy) *JobTester {
+func newJobTester(bs batchHandler, as actionHandler) *JobTester {
 	logging.DefaultLogger(fmt.Sprintf(" < %s > ", util.APP_NAME),
 		logging.LogLevelFromString("DEBUG"), 100)
 
 	jt := &JobTester{3, 0, NewJob(logging.GetLogger("job test "), 0)}
-	jt.BatchWanted(bs).ActionWanted(as).RetryWanted(jt)
+	jt.BatchHandler(bs).ActionHandler(as).RetryHandler(jt).ErrorHandler(jt)
 	return jt
 }
 

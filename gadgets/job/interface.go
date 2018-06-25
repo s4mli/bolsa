@@ -12,20 +12,23 @@ type job interface {
 }
 
 // batch for feeding
-type batchStrategy interface {
+type batchHandler interface {
 	size() int
 	batch(context.Context, []interface{}) (interface{}, error)
 }
 
 // action for chewing
-type actionStrategy interface {
+type actionHandler interface {
 	act(ctx context.Context, p interface{}) (r interface{}, e error)
 }
 
 // retry for Job
-type retryStrategy interface {
+type retryHandler interface {
 	worth(Done) bool
 	forgo() bool
+}
+
+type errorHandler interface {
 	onError(error)
 }
 
