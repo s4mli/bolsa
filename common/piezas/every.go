@@ -4,8 +4,8 @@ import (
 	"context"
 	"time"
 
-	"github.com/samwooo/bolsa/gadgets/job"
-	"github.com/samwooo/bolsa/gadgets/logging"
+	"github.com/samwooo/bolsa/common/job"
+	"github.com/samwooo/bolsa/common/logging"
 )
 
 type everyJ struct {

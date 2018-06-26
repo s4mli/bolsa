@@ -2,17 +2,16 @@ package piezas
 
 import (
 	"context"
+	"fmt"
 	"testing"
 
-	"fmt"
-
-	"github.com/samwooo/bolsa/gadgets/logging"
-	"github.com/samwooo/bolsa/gadgets/util"
+	"github.com/samwooo/bolsa/common"
+	"github.com/samwooo/bolsa/common/logging"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestEach(t *testing.T) {
-	logging.DefaultLogger(fmt.Sprintf(" < %s > ", util.APP_NAME),
+	logging.DefaultLogger(fmt.Sprintf(" < %s > ", common.APP_NAME),
 		logging.LogLevelFromString("DEBUG"), 100)
 
 	input := []interface{}{1, 2, 3, 4, 5, 6, 7, 8, "abc"}

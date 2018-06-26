@@ -2,14 +2,11 @@ package job
 
 import (
 	"context"
-
+	"fmt"
+	"math"
 	"runtime"
 
-	"fmt"
-
-	"math"
-
-	"github.com/samwooo/bolsa/gadgets/logging"
+	"github.com/samwooo/bolsa/common/logging"
 )
 
 type handlerType int

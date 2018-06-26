@@ -2,15 +2,13 @@ package piezas
 
 import (
 	"context"
+	"fmt"
+	"strings"
 	"time"
 
-	"fmt"
-
-	"strings"
-
-	"github.com/samwooo/bolsa/gadgets/job"
-	"github.com/samwooo/bolsa/gadgets/logging"
-	"github.com/samwooo/bolsa/gadgets/util"
+	"github.com/samwooo/bolsa/common"
+	"github.com/samwooo/bolsa/common/job"
+	"github.com/samwooo/bolsa/common/logging"
 )
 
 type reduceJ struct {
@@ -44,7 +42,7 @@ func (myself *reduceJ) act(ctx context.Context, p interface{}) (r interface{}, e
 			myself.memo = m
 		}
 	}
-	return myself.memo, util.ErrorFromString(strings.Join(reasons, " | "))
+	return myself.memo, common.ErrorFromString(strings.Join(reasons, " | "))
 }
 
 func Reduce(ctx context.Context, logger logging.Logger, data []interface{}, memo interface{},

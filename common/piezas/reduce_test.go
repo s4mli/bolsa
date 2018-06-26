@@ -2,12 +2,11 @@ package piezas
 
 import (
 	"context"
+	"fmt"
 	"testing"
 
-	"fmt"
-
-	"github.com/samwooo/bolsa/gadgets/logging"
-	"github.com/samwooo/bolsa/gadgets/util"
+	"github.com/samwooo/bolsa/common"
+	"github.com/samwooo/bolsa/common/logging"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -22,7 +21,7 @@ var reduceIte = func(k interface{}, memo interface{}) (interface{}, error) {
 }
 
 func testReduceWithSingleError(t *testing.T) {
-	logging.DefaultLogger(fmt.Sprintf(" < %s > ", util.APP_NAME),
+	logging.DefaultLogger(fmt.Sprintf(" < %s > ", common.APP_NAME),
 		logging.LogLevelFromString("DEBUG"), 100)
 
 	input := []interface{}{1, 2, 3, 4, 5, 6, 7, 8, "abc"}
@@ -33,7 +32,7 @@ func testReduceWithSingleError(t *testing.T) {
 }
 
 func testReduceWithMultipleError(t *testing.T) {
-	logging.DefaultLogger(fmt.Sprintf(" < %s > ", util.APP_NAME),
+	logging.DefaultLogger(fmt.Sprintf(" < %s > ", common.APP_NAME),
 		logging.LogLevelFromString("DEBUG"), 100)
 
 	input := []interface{}{
@@ -53,7 +52,7 @@ func testReduceWithMultipleError(t *testing.T) {
 }
 
 func testReduceWithoutError(t *testing.T) {
-	logging.DefaultLogger(fmt.Sprintf(" < %s > ", util.APP_NAME),
+	logging.DefaultLogger(fmt.Sprintf(" < %s > ", common.APP_NAME),
 		logging.LogLevelFromString("DEBUG"), 100)
 
 	input := []interface{}{1, 2, 3, 4, 5, 6, 7, 8}
@@ -67,5 +66,4 @@ func TestReduce(t *testing.T) {
 	testReduceWithSingleError(t)
 	testReduceWithMultipleError(t)
 	testReduceWithoutError(t)
-
 }
