@@ -14,7 +14,7 @@ func TestEach(t *testing.T) {
 	logging.DefaultLogger(fmt.Sprintf(" < %s > ", common.APP_NAME),
 		logging.LogLevelFromString("DEBUG"), 100)
 
-	input := []interface{}{1, 2, 3, 4, 5, 6, 7, 8, "abc"}
+	input := []interface{}{1, 2, 3, 4, 5, 6, 7, 8} //, "abc"}
 	r := Each(context.Background(), logging.GetLogger("each test "),
 		input,
 		func(k interface{}) (interface{}, error) {
