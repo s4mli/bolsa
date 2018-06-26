@@ -1,6 +1,15 @@
 package piezas
 
-/*
+import (
+	"context"
+	"fmt"
+	"testing"
+
+	"github.com/samwooo/bolsa/common"
+	"github.com/samwooo/bolsa/common/logging"
+	"github.com/stretchr/testify/assert"
+)
+
 func TestEach(t *testing.T) {
 	logging.DefaultLogger(fmt.Sprintf(" < %s > ", common.APP_NAME),
 		logging.LogLevelFromString("DEBUG"), 100)
@@ -26,4 +35,3 @@ func TestEach(t *testing.T) {
 		}
 	}
 }
-*/

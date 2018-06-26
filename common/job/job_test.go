@@ -276,3 +276,37 @@ func TestJobBatchNWithoutErrorActionWithoutError(t *testing.T) {
 		assert.Equal(t, nil, done.E)
 	}
 }
+
+// BatchHandler ActionHandler RetryHandler ErrorHandler are all job itself
+func (jt *JobTester) size() int { return jt.maxRetry }
+func (jt *JobTester) batch(ctx context.Context, groupedMash []interface{}) (interface{}, error) {
+	return groupedMash[len(groupedMash)-1], nil
+}
+func (jt *JobTester) act(ctx context.Context, p interface{}) (r interface{}, e error) {
+	v, _ := p.(int)
+	if v%2 == 0 {
+		return p, nil
+	} else {
+		return nil, fmt.Errorf("itself error")
+	}
+}
+
+func TestJobItself(t *testing.T) {
+	logging.DefaultLogger(common.APP_NAME, logging.LogLevelFromString("DEBUG"), 100)
+	jt := &JobTester{3, 0, NewJob(logging.GetLogger(" TEST job "), 0)}
+	jt.BatchHandler(jt).ActionHandler(jt).RetryHandler(jt).ErrorHandler(jt)
+	with := []interface{}{1, 2, 3, 4, 5, 6, 7, 8}
+	allDone := jt.Run(context.Background(), with)
+	assert.Equal(t, 3, len(allDone))
+	for _, done := range allDone {
+		assert.Equal(t, true, common.IsIn(done.P, with))
+		v, _ := done.P.(int)
+		if v%2 == 1 {
+			assert.Equal(t, nil, done.R)
+			assert.Equal(t, fmt.Sprintf("× action failed: ( %v, itself error )", done.P), done.E.Error())
+		} else {
+			assert.Equal(t, true, common.IsIn(done.R, with))
+			assert.Equal(t, nil, done.E)
+		}
+	}
+}
