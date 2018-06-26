@@ -31,7 +31,7 @@ func Filter(ctx context.Context, logger logging.Logger, data []interface{},
 	var result []interface{}
 	for _, d := range done {
 		if d.E == nil {
-			if v, ok := d.R.(bool); ok && v == true {
+			if v, ok := d.R.(bool); ok && v {
 				result = append(result, d.P)
 			}
 		}
