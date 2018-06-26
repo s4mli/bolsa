@@ -125,11 +125,15 @@ func (q *SQSQueue) decode(message string) ([]interface{}, error) {
 	if payload, err := base64.StdEncoding.DecodeString(message); err != nil {
 		return nil, err
 	} else {
-		var body []interface{}
+		var body interface{}
 		if e := json.Unmarshal(payload, body); e != nil {
 			return nil, e
 		} else {
-			return body, nil
+			if b, ok := body.([]interface{}); !ok {
+				return nil, fmt.Errorf("cast error")
+			} else {
+				return b, nil
+			}
 		}
 	}
 }

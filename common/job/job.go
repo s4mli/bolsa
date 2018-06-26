@@ -56,9 +56,9 @@ type Job struct {
 }
 
 func (j *Job) feed(ctx context.Context, mash []interface{}) <-chan interface{} {
-	type batch func(context.Context, []interface{}) (interface{}, error)
+	type batchFn func(context.Context, []interface{}) (interface{}, error)
 
-	feedWithBatch := func(batchSize int, batch batch) <-chan interface{} {
+	feedWithBatch := func(batchSize int, batch batchFn) <-chan interface{} {
 		mashLen := len(mash)
 		group := mashLen / batchSize
 		if mashLen%batchSize > 0 {
@@ -106,9 +106,9 @@ func (j *Job) feed(ctx context.Context, mash []interface{}) <-chan interface{} {
 }
 
 func (j *Job) chew(ctx context.Context, in <-chan interface{}) <-chan Done {
-	type act func(ctx context.Context, p interface{}) (r interface{}, e error)
+	type actFn func(ctx context.Context, p interface{}) (r interface{}, e error)
 
-	chewWithAction := func(action act) <-chan Done {
+	chewWithAction := func(act actFn) <-chan Done {
 		out := make(chan Done, j.workers)
 		waiter := make(chan bool, j.workers)
 		for i := 0; i < j.workers; i++ {
@@ -118,7 +118,7 @@ func (j *Job) chew(ctx context.Context, in <-chan interface{}) <-chan Done {
 						j.Logger.Debugf("√ action done, pipe error ( %s ) through", done.E.Error())
 						out <- done // batch error
 					} else {
-						ret, err := action(ctx, para)
+						ret, err := act(ctx, para)
 						if err != nil {
 							j.Logger.Errorf("× action failed ( %+v ) %s ", para, err.Error())
 							out <- Done{
