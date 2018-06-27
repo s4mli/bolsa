@@ -28,7 +28,7 @@ func testReduceWithSingleError(t *testing.T) {
 	memo := 0
 	r, err := Reduce(context.Background(), logging.GetLogger("reduce test "), input, memo, reduceIte)
 	assert.Equal(t, 36, r)
-	assert.Equal(t, "× action failed: ( [1 2 3 4 5 6 7 8 abc], cast abc error )", err.Error())
+	assert.Equal(t, "× action failed ( [1 2 3 4 5 6 7 8 abc], cast abc error )", err.Error())
 }
 
 func testReduceWithMultipleError(t *testing.T) {
@@ -47,7 +47,7 @@ func testReduceWithMultipleError(t *testing.T) {
 	r, err := Reduce(context.Background(), logging.GetLogger("reduce test "), input, memo, reduceIte)
 	assert.Equal(t, 180, r)
 	assert.Equal(t,
-		"× action failed: ( [1 2 3 4 5 6 7 8 1 2 3 4 5 6 7 8 1 2 3 4 5 6 7 8 1 2 3 4 5 6 7 8"+
+		"× action failed ( [1 2 3 4 5 6 7 8 1 2 3 4 5 6 7 8 1 2 3 4 5 6 7 8 1 2 3 4 5 6 7 8"+
 			" 1 2 3 4 5 6 7 8 ab bc cd], cast ab error | cast bc error | cast cd error )", err.Error())
 }
 

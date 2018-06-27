@@ -11,43 +11,47 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+const (
+	WHAT = " $$$ JOB TEST $$$ "
+)
+
 type batch1WithError struct{}
 
-func (b *batch1WithError) size() int { return 1 }
-func (b *batch1WithError) batch(context.Context, []interface{}) (interface{}, error) {
+func (b *batch1WithError) Size() int { return 1 }
+func (b *batch1WithError) Batch(context.Context, []interface{}) (interface{}, error) {
 	return nil, fmt.Errorf("test batch1WithError")
 }
 
 type batch1WithoutError struct{}
 
-func (b *batch1WithoutError) size() int { return 1 }
-func (b *batch1WithoutError) batch(ctx context.Context, groupedMash []interface{}) (interface{}, error) {
+func (b *batch1WithoutError) Size() int { return 1 }
+func (b *batch1WithoutError) Batch(ctx context.Context, groupedMash []interface{}) (interface{}, error) {
 	return groupedMash[0], nil
 }
 
 type batchNWithError struct{ n int }
 
-func (b *batchNWithError) size() int { return b.n }
-func (b *batchNWithError) batch(context.Context, []interface{}) (interface{}, error) {
+func (b *batchNWithError) Size() int { return b.n }
+func (b *batchNWithError) Batch(context.Context, []interface{}) (interface{}, error) {
 	return nil, fmt.Errorf("test batch%dWithError", b.n)
 }
 
 type batchNWithoutError struct{ n int }
 
-func (b *batchNWithoutError) size() int { return b.n }
-func (b *batchNWithoutError) batch(ctx context.Context, groupedMash []interface{}) (interface{}, error) {
+func (b *batchNWithoutError) Size() int { return b.n }
+func (b *batchNWithoutError) Batch(ctx context.Context, groupedMash []interface{}) (interface{}, error) {
 	return groupedMash[len(groupedMash)-1], nil
 }
 
 type actionWithError struct{}
 
-func (a *actionWithError) act(ctx context.Context, p interface{}) (r interface{}, e error) {
+func (a *actionWithError) Act(ctx context.Context, p interface{}) (r interface{}, e error) {
 	return nil, fmt.Errorf("test actionWithError")
 }
 
 type actionWithoutError struct{}
 
-func (a *actionWithoutError) act(ctx context.Context, p interface{}) (r interface{}, e error) {
+func (a *actionWithoutError) Act(ctx context.Context, p interface{}) (r interface{}, e error) {
 	return p, nil
 }
 
@@ -58,21 +62,21 @@ type JobTester struct {
 	*Job
 }
 
-func (*JobTester) worth(d Done) bool { return d.E != nil }
+func (*JobTester) Worth(d Done) bool { return d.E != nil }
 
-func (jt *JobTester) forgo() bool {
+func (jt *JobTester) Forgo() bool {
 	ended := jt.curRetry >= jt.maxRetry
 	jt.curRetry++
 	return ended
 }
 
-func (jt *JobTester) onError(error) {}
+func (jt *JobTester) OnError(error) {}
 
 func newJobTester(bs batchHandler, as actionHandler) *JobTester {
 	logging.DefaultLogger(fmt.Sprintf(" < %s > ", common.APP_NAME),
 		logging.LogLevelFromString("DEBUG"), 100)
 
-	jt := &JobTester{3, 0, NewJob(logging.GetLogger("job test "), 0)}
+	jt := &JobTester{3, 0, NewJob(logging.GetLogger(WHAT), 0)}
 	jt.BatchHandler(bs).ActionHandler(as).RetryHandler(jt).ErrorHandler(jt)
 	return jt
 }
@@ -97,7 +101,7 @@ func TestJobWithNoBatchButActionError(t *testing.T) {
 	for _, done := range allDone {
 		assert.Equal(t, true, common.IsIn(done.P, with))
 		assert.Equal(t, nil, done.R)
-		assert.Equal(t, fmt.Sprintf("× action failed: ( %+v, test actionWithError )", done.P), done.E.Error())
+		assert.Equal(t, fmt.Sprintf("× action failed ( %+v, test actionWithError )", done.P), done.E.Error())
 	}
 }
 
@@ -118,11 +122,12 @@ func TestJobBatch1WithErrorNoAction(t *testing.T) {
 	jt := newJobTester(&batch1WithError{}, nil)
 	with := []interface{}{1, 2, 3}
 	allDone := jt.Run(context.Background(), with)
+	t.Log(allDone)
 	for _, done := range allDone {
 		assert.Equal(t, true, common.IsIn(done.P, with))
 		assert.Equal(t, nil, done.R)
 		assert.Equal(t,
-			fmt.Sprintf("× batch failed: ( %+v, test batch1WithError )", []interface{}{done.P}),
+			fmt.Sprintf("× batch failed ( %+v, test batch1WithError )", []interface{}{done.P}),
 			done.E.Error())
 	}
 }
@@ -136,7 +141,7 @@ func TestJobBatch1WithErrorActionWithError(t *testing.T) {
 		assert.Equal(t, true, common.IsIn(done.P, with))
 		assert.Equal(t, nil, done.R)
 		assert.Equal(t,
-			fmt.Sprintf("× batch failed: ( %+v, test batch1WithError )", []interface{}{done.P}),
+			fmt.Sprintf("× batch failed ( %+v, test batch1WithError )", []interface{}{done.P}),
 			done.E.Error())
 	}
 }
@@ -150,7 +155,7 @@ func TestJobBatch1WithErrorActionWithoutError(t *testing.T) {
 		assert.Equal(t, true, common.IsIn(done.P, with))
 		assert.Equal(t, nil, done.R)
 		assert.Equal(t,
-			fmt.Sprintf("× batch failed: ( %+v, test batch1WithError )", []interface{}{done.P}),
+			fmt.Sprintf("× batch failed ( %+v, test batch1WithError )", []interface{}{done.P}),
 			done.E.Error())
 	}
 }
@@ -176,7 +181,7 @@ func TestJobBatch1WithoutErrorActionWithError(t *testing.T) {
 		assert.Equal(t, true, common.IsIn(done.P, with))
 		assert.Equal(t, nil, done.R)
 		assert.Equal(t,
-			fmt.Sprintf("× action failed: ( %+v, test actionWithError )", done.P),
+			fmt.Sprintf("× action failed ( %+v, test actionWithError )", done.P),
 			done.E.Error())
 	}
 }
@@ -202,7 +207,7 @@ func TestJobBatchNWithErrorNoAction(t *testing.T) {
 	for _, done := range allDone {
 		assert.Equal(t, true, common.IsIn(done.P, with))
 		assert.Equal(t, nil, done.R)
-		assert.Equal(t, true, strings.Contains(done.E.Error(), "× batch failed: ( ["))
+		assert.Equal(t, true, strings.Contains(done.E.Error(), "× batch failed ( ["))
 		assert.Equal(t, true, strings.Contains(done.E.Error(), fmt.Sprintf("%+v", done.P)))
 		assert.Equal(t, true, strings.Contains(done.E.Error(), "], test batch3WithError )"))
 	}
@@ -217,7 +222,7 @@ func TestJobBatchNWithErrorActionWithError(t *testing.T) {
 	for _, done := range allDone {
 		assert.Equal(t, true, common.IsIn(done.P, with))
 		assert.Equal(t, nil, done.R)
-		assert.Equal(t, true, strings.Contains(done.E.Error(), "× batch failed: ( ["))
+		assert.Equal(t, true, strings.Contains(done.E.Error(), "× batch failed ( ["))
 		assert.Equal(t, true, strings.Contains(done.E.Error(), fmt.Sprintf("%+v", done.P)))
 		assert.Equal(t, true, strings.Contains(done.E.Error(), "], test batch3WithError )"))
 	}
@@ -232,7 +237,7 @@ func TestJobBatchNWithErrorActionWithoutError(t *testing.T) {
 	for _, done := range allDone {
 		assert.Equal(t, true, common.IsIn(done.P, with))
 		assert.Equal(t, nil, done.R)
-		assert.Equal(t, true, strings.Contains(done.E.Error(), "× batch failed: ( ["))
+		assert.Equal(t, true, strings.Contains(done.E.Error(), "× batch failed ( ["))
 		assert.Equal(t, true, strings.Contains(done.E.Error(), fmt.Sprintf("%+v", done.P)))
 		assert.Equal(t, true, strings.Contains(done.E.Error(), "], test batch3WithError )"))
 	}
@@ -260,7 +265,7 @@ func TestJobBatchNWithoutErrorActionWithError(t *testing.T) {
 	for _, done := range allDone {
 		assert.Equal(t, true, common.IsIn(done.P, with))
 		assert.Equal(t, nil, done.R)
-		assert.Equal(t, fmt.Sprintf("× action failed: ( %+v, test actionWithError )", done.P), done.E.Error())
+		assert.Equal(t, fmt.Sprintf("× action failed ( %+v, test actionWithError )", done.P), done.E.Error())
 	}
 }
 
@@ -278,11 +283,11 @@ func TestJobBatchNWithoutErrorActionWithoutError(t *testing.T) {
 }
 
 // BatchHandler ActionHandler RetryHandler ErrorHandler are all job itself
-func (jt *JobTester) size() int { return jt.maxRetry }
-func (jt *JobTester) batch(ctx context.Context, groupedMash []interface{}) (interface{}, error) {
+func (jt *JobTester) Size() int { return jt.maxRetry }
+func (jt *JobTester) Batch(ctx context.Context, groupedMash []interface{}) (interface{}, error) {
 	return groupedMash[len(groupedMash)-1], nil
 }
-func (jt *JobTester) act(ctx context.Context, p interface{}) (r interface{}, e error) {
+func (jt *JobTester) Act(ctx context.Context, p interface{}) (r interface{}, e error) {
 	v, _ := p.(int)
 	if v%2 == 0 {
 		return p, nil
@@ -292,8 +297,7 @@ func (jt *JobTester) act(ctx context.Context, p interface{}) (r interface{}, e e
 }
 
 func TestJobItself(t *testing.T) {
-	logging.DefaultLogger(common.APP_NAME, logging.LogLevelFromString("DEBUG"), 100)
-	jt := &JobTester{3, 0, NewJob(logging.GetLogger(" TEST job "), 0)}
+	jt := &JobTester{3, 0, NewJob(logging.GetLogger(WHAT), 0)}
 	jt.BatchHandler(jt).ActionHandler(jt).RetryHandler(jt).ErrorHandler(jt)
 	with := []interface{}{1, 2, 3, 4, 5, 6, 7, 8}
 	allDone := jt.Run(context.Background(), with)
@@ -303,7 +307,7 @@ func TestJobItself(t *testing.T) {
 		v, _ := done.P.(int)
 		if v%2 == 1 {
 			assert.Equal(t, nil, done.R)
-			assert.Equal(t, fmt.Sprintf("× action failed: ( %v, itself error )", done.P), done.E.Error())
+			assert.Equal(t, fmt.Sprintf("× action failed ( %v, itself error )", done.P), done.E.Error())
 		} else {
 			assert.Equal(t, true, common.IsIn(done.R, with))
 			assert.Equal(t, nil, done.E)

@@ -13,7 +13,7 @@ type filterJ struct {
 	iterator func(interface{}) (bool, error)
 }
 
-func (myself *filterJ) act(ctx context.Context, p interface{}) (r interface{}, e error) {
+func (myself *filterJ) Act(ctx context.Context, p interface{}) (r interface{}, e error) {
 	if myself.iterator != nil {
 		return myself.iterator(p)
 	} else {

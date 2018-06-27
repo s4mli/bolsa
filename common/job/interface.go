@@ -13,23 +13,23 @@ type job interface {
 
 // batch for feeding
 type batchHandler interface {
-	size() int
-	batch(context.Context, []interface{}) (interface{}, error)
+	Size() int
+	Batch(context.Context, []interface{}) (interface{}, error)
 }
 
 // action for chewing
 type actionHandler interface {
-	act(ctx context.Context, p interface{}) (r interface{}, e error)
+	Act(ctx context.Context, p interface{}) (r interface{}, e error)
 }
 
 // retry for Job
 type retryHandler interface {
-	worth(Done) bool
-	forgo() bool
+	Worth(Done) bool
+	Forgo() bool
 }
 
 type errorHandler interface {
-	onError(error)
+	OnError(error)
 }
 
 // result for a job which contains Parameter Result and Error

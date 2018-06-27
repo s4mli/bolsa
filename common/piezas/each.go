@@ -13,9 +13,9 @@ type eachJ struct {
 	iterator func(interface{}) (interface{}, error)
 }
 
-func (ea *eachJ) act(ctx context.Context, p interface{}) (r interface{}, e error) {
-	if ea.iterator != nil {
-		return ea.iterator(p)
+func (myself *eachJ) Act(ctx context.Context, p interface{}) (r interface{}, e error) {
+	if myself.iterator != nil {
+		return myself.iterator(p)
 	} else {
 		return p, nil
 	}
