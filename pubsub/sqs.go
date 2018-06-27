@@ -61,17 +61,15 @@ type pushJob struct {
 	maxRetry int
 }
 
-// batchStrategy
-func (pj *pushJob) size() int {
-	return pj.q.batch
-}
+// batchHandler
+func (pj *pushJob) Size() int { return pj.q.batch }
 
-func (pj *pushJob) batch(ctx context.Context, groupedMash []interface{}) (interface{}, error) {
+func (pj *pushJob) Batch(ctx context.Context, groupedMash []interface{}) (interface{}, error) {
 	return pj.q.encode(groupedMash)
 }
 
-// actionStrategy
-func (pj *pushJob) act(ctx context.Context, p interface{}) (r interface{}, e error) {
+// actionHandler
+func (pj *pushJob) Act(ctx context.Context, p interface{}) (r interface{}, e error) {
 	if bodyStr, ok := p.(string); ok {
 		params := &sqs.SendMessageInput{
 			MessageBody:  aws.String(bodyStr),
@@ -90,17 +88,17 @@ func (pj *pushJob) act(ctx context.Context, p interface{}) (r interface{}, e err
 	}
 }
 
-// retryStrategy
-func (pj *pushJob) worth(done job.Done) bool { return done.E != nil }
+// retryHandler
+func (pj *pushJob) Worth(done job.Done) bool { return done.E != nil }
 
-func (pj *pushJob) forgo() bool {
+func (pj *pushJob) Forgo() bool {
 	ended := pj.curRetry >= pj.maxRetry
 	pj.curRetry++
 	return ended
 }
 
-// errorStrategy
-func (pj *pushJob) onError() {}
+// errorHandler
+func (pj *pushJob) OnError(error) {}
 
 ////////////////////////
 // Queue is a Broker //
@@ -161,7 +159,7 @@ func (q *SQSQueue) Push(ctx context.Context, body []interface{}) ([]EventId, err
 		return messageIds, common.ErrorFromString(strings.Join(errors, " | "))
 	}
 
-	pj := pushJob{job.NewJob(q.logger, 0), q, 0, 3}
+	pj := &pushJob{job.NewJob(q.logger, 0), q, 0, 3}
 	return handleResults(pj.BatchHandler(pj).ActionHandler(pj).RetryHandler(pj).ErrorHandler(pj).Run(ctx, body))
 }
 

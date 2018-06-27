@@ -9,52 +9,6 @@ import (
 	"github.com/samwooo/bolsa/common/logging"
 )
 
-type handlerType int
-
-const (
-	Batch handlerType = iota
-	Action
-	Retry
-)
-
-func (ht *handlerType) Name() string {
-	switch *ht {
-	case Batch:
-		return "batch"
-	case Action:
-		return "action"
-	case Retry:
-		return "retry"
-	}
-	return "?"
-}
-
-////////////
-// Error //
-type Error struct {
-	handler handlerType
-	error
-}
-
-func (je Error) Error() string {
-	return fmt.Sprintf("× %s failed %s", je.handler.Name(), je.error.Error())
-}
-
-func newError(ht handlerType, err error) *Error {
-	return &Error{ht, err}
-}
-
-//////////
-// Job //
-type Job struct {
-	Logger  logging.Logger
-	workers int
-	batchHandler
-	actionHandler
-	retryHandler
-	errorHandler
-}
-
 func (j *Job) feed(ctx context.Context, mash []interface{}) <-chan interface{} {
 	type batchFn func(context.Context, []interface{}) (interface{}, error)
 
@@ -217,7 +171,7 @@ func (j *Job) Run(ctx context.Context, with []interface{}) []Done {
 			var actionFailed []Done
 			for _, done := range allDone {
 				if done.E != nil && j.retryHandler.Worth(done) { // with error and worth retry then retry
-					if e, ok := done.E.(*Error); ok && e.handler == Batch {
+					if e, ok := done.E.(*Error); ok && e.hook == Batch {
 						if groupedPara, isArray := done.P.([]interface{}); isArray {
 							batchRetries = append(batchRetries, groupedPara...)
 							for _, para := range groupedPara {
