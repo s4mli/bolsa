@@ -17,7 +17,7 @@ const (
 	Retry
 )
 
-func (ht *handlerType) String() string {
+func (ht *handlerType) Name() string {
 	switch *ht {
 	case Batch:
 		return "batch"
@@ -37,7 +37,7 @@ type Error struct {
 }
 
 func (je Error) Error() string {
-	return fmt.Sprintf("× %s failed: %s", je.handler.String(), je.error.Error())
+	return fmt.Sprintf("× %s failed %s", je.handler.Name(), je.error.Error())
 }
 
 func newError(ht handlerType, err error) *Error {
@@ -74,13 +74,13 @@ func (j *Job) feed(ctx context.Context, mash []interface{}) <-chan interface{} {
 			}
 			go func(groupedMash []interface{}, in chan<- interface{}, waiter chan<- bool) {
 				if data, err := batch(ctx, groupedMash); err != nil {
-					j.Logger.Errorf("× batch failed ( %+v ) %s", groupedMash, err.Error())
+					j.Logger.Errorf("× batch failed ( %+v, %s )", groupedMash, err.Error())
 					in <- Done{
 						groupedMash,
 						data,
 						newError(Batch, fmt.Errorf("( %+v, %s )", groupedMash, err.Error()))}
 				} else {
-					j.Logger.Debugf("√ batch done ( %+v ) %+v", groupedMash, data)
+					j.Logger.Debugf("√ batch succeed ( %+v, %+v )", groupedMash, data)
 					in <- data
 				}
 				waiter <- true
@@ -95,7 +95,7 @@ func (j *Job) feed(ctx context.Context, mash []interface{}) <-chan interface{} {
 		return in
 	}
 	if j.batchHandler != nil {
-		j.Logger.Debugf("batch √ size %d", j.batchHandler.size())
+		j.Logger.Debugf("batch √ ( size %d )", j.batchHandler.size())
 		return feedWithBatch(j.batchHandler.size(), j.batchHandler.batch)
 	} else {
 		j.Logger.Debug("batch ×")
@@ -115,18 +115,18 @@ func (j *Job) chew(ctx context.Context, in <-chan interface{}) <-chan Done {
 			go func(in <-chan interface{}, out chan<- Done, waiter chan<- bool) {
 				for para := range in {
 					if done, ok := para.(Done); ok {
-						j.Logger.Debugf("√ action done, pipe error ( %s ) through", done.E.Error())
+						j.Logger.Debugf("√ action succeed, pipe error ( %s ) through", done.E.Error())
 						out <- done // batch error
 					} else {
 						ret, err := act(ctx, para)
 						if err != nil {
-							j.Logger.Errorf("× action failed ( %+v ) %s ", para, err.Error())
+							j.Logger.Errorf("× action failed ( %+v, %s )", para, err.Error())
 							out <- Done{
 								para,
 								ret, // be tolerant with error, keep last successful ret
 								newError(Action, fmt.Errorf("( %+v, %s )", para, err.Error()))}
 						} else {
-							j.Logger.Debugf("√ action done ( %+v ) %+v", para, ret)
+							j.Logger.Debugf("√ action succeed ( %+v, %+v)", para, ret)
 							out <- Done{para, ret, nil}
 						}
 					}
@@ -143,7 +143,7 @@ func (j *Job) chew(ctx context.Context, in <-chan interface{}) <-chan Done {
 		return out
 	}
 	if j.actionHandler != nil {
-		j.Logger.Debugf("action √ workers %d", j.workers)
+		j.Logger.Debugf("action √ ( workers %d )", j.workers)
 		return chewWithAction(j.actionHandler.act)
 	} else {
 		j.Logger.Debug("action ×")
@@ -209,6 +209,7 @@ func (j *Job) Run(ctx context.Context, with []interface{}) []Done {
 		j.Logger.Debugf("retry ×")
 		finalAllDone = allDone
 	} else {
+		retries := 1
 		for {
 			var batchRetries []interface{}
 			var batchFailed []Done
@@ -240,7 +241,9 @@ func (j *Job) Run(ctx context.Context, with []interface{}) []Done {
 				j.Logger.Debug("√ retry ended")
 				break
 			} else {
-				j.Logger.Debugf("√ retry started ( batch %d, action %d )", len(batchRetries), len(actionRetries))
+				j.Logger.Debugf("√ retry ( %d ) started ( batch %d, action %d )", retries,
+					len(batchRetries), len(actionRetries))
+				retries++
 				allDone = []Done{}
 				if len(actionRetries) > 0 {
 					allDone = append(allDone, NewJob(j.Logger, j.workers).ActionHandler(
@@ -253,7 +256,7 @@ func (j *Job) Run(ctx context.Context, with []interface{}) []Done {
 			}
 		}
 	}
-	j.Logger.Debugf("√ finished ( %+v )", finalAllDone)
+	j.Logger.Debugf("√ finished with ( %+v )", finalAllDone)
 	return finalAllDone
 }
 
