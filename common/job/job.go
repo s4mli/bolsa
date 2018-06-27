@@ -126,22 +126,16 @@ func (j *Job) run(ctx context.Context, with []interface{}) []Done {
 	return <-j.digest(ctx, j.chew(ctx, j.feed(ctx, with)))
 }
 
-////////////////
-// Set Batch //
 func (j *Job) BatchHandler(bh batchHandler) *Job {
 	j.batchHandler = bh
 	return j
 }
 
-/////////////////
-// Set Action //
 func (j *Job) ActionHandler(ah actionHandler) *Job {
 	j.actionHandler = ah
 	return j
 }
 
-////////////////
-// Set Retry //
 func (j *Job) RetryHandler(rh retryHandler) *Job {
 	j.retryHandler = rh
 	return j
