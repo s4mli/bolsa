@@ -12,7 +12,7 @@ import (
 )
 
 const (
-	WHAT = " $$$ JOB TEST $$$ "
+	WHAT = " @ JOB TEST @ "
 )
 
 type batch1WithError struct{}
