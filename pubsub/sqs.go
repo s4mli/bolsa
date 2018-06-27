@@ -17,7 +17,7 @@ import (
 )
 
 //////////////////////////////
-// QueueMessage is a Event //
+// QueueMessage is an Event //
 type SQSMessage struct {
 	queue         *SQSQueue
 	messageId     string
@@ -61,14 +61,14 @@ type pushJob struct {
 	maxRetry int
 }
 
-// batchHandler
+// batch hook
 func (pj *pushJob) Size() int { return pj.q.batch }
 
 func (pj *pushJob) Batch(ctx context.Context, groupedMash []interface{}) (interface{}, error) {
 	return pj.q.encode(groupedMash)
 }
 
-// actionHandler
+// action hook
 func (pj *pushJob) Act(ctx context.Context, p interface{}) (r interface{}, e error) {
 	if bodyStr, ok := p.(string); ok {
 		params := &sqs.SendMessageInput{
@@ -88,7 +88,7 @@ func (pj *pushJob) Act(ctx context.Context, p interface{}) (r interface{}, e err
 	}
 }
 
-// retryHandler
+// retry hook
 func (pj *pushJob) Worth(done job.Done) bool { return done.E != nil }
 
 func (pj *pushJob) Forgo() bool {
@@ -97,7 +97,7 @@ func (pj *pushJob) Forgo() bool {
 	return ended
 }
 
-// errorHandler
+// error hook
 func (pj *pushJob) OnError(error) {}
 
 ////////////////////////

@@ -3,6 +3,7 @@ package job
 import (
 	"context"
 	"fmt"
+	"runtime"
 	"strings"
 	"testing"
 
@@ -12,7 +13,7 @@ import (
 )
 
 const (
-	WHAT = " @ JOB TEST @ "
+	WHAT = "job test "
 )
 
 type batch1WithError struct{}
@@ -57,26 +58,24 @@ func (a *actionWithoutError) Act(ctx context.Context, p interface{}) (r interfac
 
 // Job Tester
 type JobTester struct {
-	maxRetry int
-	curRetry int
 	*Job
+	maxRetry, curRetry int
 }
 
 func (*JobTester) Worth(d Done) bool { return d.E != nil }
 
 func (jt *JobTester) Forgo() bool {
-	ended := jt.curRetry >= jt.maxRetry
 	jt.curRetry++
-	return ended
+	return jt.curRetry >= jt.maxRetry
 }
 
 func (jt *JobTester) OnError(error) {}
 
 func newJobTester(bs batchHandler, as actionHandler) *JobTester {
 	logging.DefaultLogger(fmt.Sprintf(" < %s > ", common.APP_NAME),
-		logging.LogLevelFromString("DEBUG"), 100)
+		logging.LogLevelFromString("INFO"), 100)
 
-	jt := &JobTester{3, 0, NewJob(logging.GetLogger(WHAT), 0)}
+	jt := &JobTester{NewJob(logging.GetLogger(WHAT), runtime.NumCPU()), 3, 0}
 	jt.BatchHandler(bs).ActionHandler(as).RetryHandler(jt).ErrorHandler(jt)
 	return jt
 }
@@ -86,6 +85,8 @@ func TestJobWithNoBatchNoAction(t *testing.T) {
 	jt := newJobTester(nil, nil)
 	with := []interface{}{1, 2, 3}
 	allDone := jt.Run(context.Background(), with)
+	assert.Equal(t, len(with), len(allDone))
+	assert.Equal(t, jt.maxRetry, jt.curRetry)
 	for _, done := range allDone {
 		assert.Equal(t, true, common.IsIn(done.P, with))
 		assert.Equal(t, true, common.IsIn(done.R, with))
@@ -98,6 +99,8 @@ func TestJobWithNoBatchButActionError(t *testing.T) {
 	jt := newJobTester(nil, &actionWithError{})
 	with := []interface{}{1, 2, 3}
 	allDone := jt.Run(context.Background(), with)
+	assert.Equal(t, len(with), len(allDone))
+	assert.Equal(t, jt.maxRetry, jt.curRetry)
 	for _, done := range allDone {
 		assert.Equal(t, true, common.IsIn(done.P, with))
 		assert.Equal(t, nil, done.R)
@@ -110,6 +113,8 @@ func TestJobWithNoBatchButAction(t *testing.T) {
 	jt := newJobTester(nil, &actionWithoutError{})
 	with := []interface{}{1, 2, 3}
 	allDone := jt.Run(context.Background(), with)
+	assert.Equal(t, len(with), len(allDone))
+	assert.Equal(t, jt.maxRetry, jt.curRetry)
 	for _, done := range allDone {
 		assert.Equal(t, true, common.IsIn(done.P, with))
 		assert.Equal(t, true, common.IsIn(done.R, with))
@@ -122,7 +127,8 @@ func TestJobBatch1WithErrorNoAction(t *testing.T) {
 	jt := newJobTester(&batch1WithError{}, nil)
 	with := []interface{}{1, 2, 3}
 	allDone := jt.Run(context.Background(), with)
-	t.Log(allDone)
+	assert.Equal(t, len(with), len(allDone))
+	assert.Equal(t, jt.maxRetry, jt.curRetry)
 	for _, done := range allDone {
 		assert.Equal(t, true, common.IsIn(done.P, with))
 		assert.Equal(t, nil, done.R)
@@ -137,6 +143,8 @@ func TestJobBatch1WithErrorActionWithError(t *testing.T) {
 	jt := newJobTester(&batch1WithError{}, &actionWithError{})
 	with := []interface{}{1, 2, 3}
 	allDone := jt.Run(context.Background(), with)
+	assert.Equal(t, len(with), len(allDone))
+	assert.Equal(t, jt.maxRetry, jt.curRetry)
 	for _, done := range allDone {
 		assert.Equal(t, true, common.IsIn(done.P, with))
 		assert.Equal(t, nil, done.R)
@@ -151,6 +159,8 @@ func TestJobBatch1WithErrorActionWithoutError(t *testing.T) {
 	jt := newJobTester(&batch1WithError{}, &actionWithoutError{})
 	with := []interface{}{1, 2, 3}
 	allDone := jt.Run(context.Background(), with)
+	assert.Equal(t, len(with), len(allDone))
+	assert.Equal(t, jt.maxRetry, jt.curRetry)
 	for _, done := range allDone {
 		assert.Equal(t, true, common.IsIn(done.P, with))
 		assert.Equal(t, nil, done.R)
@@ -165,6 +175,8 @@ func TestJobBatch1WithoutErrorNoAction(t *testing.T) {
 	jt := newJobTester(&batch1WithoutError{}, nil)
 	with := []interface{}{1, 2, 3}
 	allDone := jt.Run(context.Background(), with)
+	assert.Equal(t, len(with), len(allDone))
+	assert.Equal(t, jt.maxRetry, jt.curRetry)
 	for _, done := range allDone {
 		assert.Equal(t, true, common.IsIn(done.P, with))
 		assert.Equal(t, true, common.IsIn(done.R, with))
@@ -177,6 +189,8 @@ func TestJobBatch1WithoutErrorActionWithError(t *testing.T) {
 	jt := newJobTester(&batch1WithoutError{}, &actionWithError{})
 	with := []interface{}{1, 2, 3}
 	allDone := jt.Run(context.Background(), with)
+	assert.Equal(t, len(with), len(allDone))
+	assert.Equal(t, jt.maxRetry, jt.curRetry)
 	for _, done := range allDone {
 		assert.Equal(t, true, common.IsIn(done.P, with))
 		assert.Equal(t, nil, done.R)
@@ -191,6 +205,8 @@ func TestJobBatch1WithoutErrorActionWithoutError(t *testing.T) {
 	jt := newJobTester(&batch1WithoutError{}, &actionWithoutError{})
 	with := []interface{}{1, 2, 3}
 	allDone := jt.Run(context.Background(), with)
+	assert.Equal(t, len(with), len(allDone))
+	assert.Equal(t, jt.maxRetry, jt.curRetry)
 	for _, done := range allDone {
 		assert.Equal(t, true, common.IsIn(done.P, with))
 		assert.Equal(t, true, common.IsIn(done.R, with))
@@ -204,6 +220,7 @@ func TestJobBatchNWithErrorNoAction(t *testing.T) {
 	with := []interface{}{1, 2, 3, 4, 5, 6, 7, 8}
 	allDone := jt.Run(context.Background(), with)
 	assert.Equal(t, len(with), len(allDone))
+	assert.Equal(t, jt.maxRetry, jt.curRetry)
 	for _, done := range allDone {
 		assert.Equal(t, true, common.IsIn(done.P, with))
 		assert.Equal(t, nil, done.R)
@@ -219,6 +236,7 @@ func TestJobBatchNWithErrorActionWithError(t *testing.T) {
 	with := []interface{}{1, 2, 3, 4, 5, 6, 7, 8}
 	allDone := jt.Run(context.Background(), with)
 	assert.Equal(t, len(with), len(allDone))
+	assert.Equal(t, jt.maxRetry, jt.curRetry)
 	for _, done := range allDone {
 		assert.Equal(t, true, common.IsIn(done.P, with))
 		assert.Equal(t, nil, done.R)
@@ -234,6 +252,7 @@ func TestJobBatchNWithErrorActionWithoutError(t *testing.T) {
 	with := []interface{}{1, 2, 3, 4, 5, 6, 7, 8}
 	allDone := jt.Run(context.Background(), with)
 	assert.Equal(t, len(with), len(allDone))
+	assert.Equal(t, jt.maxRetry, jt.curRetry)
 	for _, done := range allDone {
 		assert.Equal(t, true, common.IsIn(done.P, with))
 		assert.Equal(t, nil, done.R)
@@ -249,6 +268,7 @@ func TestJobBatchNWithoutErrorNoAction(t *testing.T) {
 	with := []interface{}{1, 2, 3, 4, 5, 6, 7, 8}
 	allDone := jt.Run(context.Background(), with)
 	assert.Equal(t, 3, len(allDone))
+	assert.Equal(t, jt.maxRetry, jt.curRetry)
 	for _, done := range allDone {
 		assert.Equal(t, true, common.IsIn(done.P, with))
 		assert.Equal(t, true, common.IsIn(done.R, with))
@@ -262,6 +282,7 @@ func TestJobBatchNWithoutErrorActionWithError(t *testing.T) {
 	with := []interface{}{1, 2, 3, 4, 5, 6, 7, 8}
 	allDone := jt.Run(context.Background(), with)
 	assert.Equal(t, 3, len(allDone))
+	assert.Equal(t, jt.maxRetry, jt.curRetry)
 	for _, done := range allDone {
 		assert.Equal(t, true, common.IsIn(done.P, with))
 		assert.Equal(t, nil, done.R)
@@ -275,6 +296,7 @@ func TestJobBatchNWithoutErrorActionWithoutError(t *testing.T) {
 	with := []interface{}{1, 2, 3, 4, 5, 6, 7, 8}
 	allDone := jt.Run(context.Background(), with)
 	assert.Equal(t, 3, len(allDone))
+	assert.Equal(t, jt.maxRetry, jt.curRetry)
 	for _, done := range allDone {
 		assert.Equal(t, true, common.IsIn(done.P, with))
 		assert.Equal(t, true, common.IsIn(done.R, with))
@@ -297,11 +319,12 @@ func (jt *JobTester) Act(ctx context.Context, p interface{}) (r interface{}, e e
 }
 
 func TestJobItself(t *testing.T) {
-	jt := &JobTester{3, 0, NewJob(logging.GetLogger(WHAT), 0)}
+	jt := &JobTester{NewJob(logging.GetLogger(WHAT), runtime.NumCPU()), 3, 0}
 	jt.BatchHandler(jt).ActionHandler(jt).RetryHandler(jt).ErrorHandler(jt)
 	with := []interface{}{1, 2, 3, 4, 5, 6, 7, 8}
 	allDone := jt.Run(context.Background(), with)
 	assert.Equal(t, 3, len(allDone))
+	assert.Equal(t, jt.maxRetry, jt.curRetry)
 	for _, done := range allDone {
 		assert.Equal(t, true, common.IsIn(done.P, with))
 		v, _ := done.P.(int)
@@ -312,5 +335,81 @@ func TestJobItself(t *testing.T) {
 			assert.Equal(t, true, common.IsIn(done.R, with))
 			assert.Equal(t, nil, done.E)
 		}
+	}
+}
+
+type retryHook struct{}
+
+func (rh *retryHook) Worth(Done) bool {
+	return false
+}
+
+func (rh *retryHook) Forgo() bool {
+	return true
+}
+
+func TestJobItselfWithoutRetry(t *testing.T) {
+	jt := &JobTester{NewJob(logging.GetLogger(WHAT), runtime.NumCPU()), 3, 0}
+	jt.BatchHandler(jt).ActionHandler(jt).RetryHandler(&retryHook{}).ErrorHandler(jt)
+	with := []interface{}{1, 2, 3, 4, 5, 6, 7, 8}
+	allDone := jt.Run(context.Background(), with)
+	assert.Equal(t, 3, len(allDone))
+	assert.Equal(t, 0, jt.curRetry)
+	for _, done := range allDone {
+		assert.Equal(t, true, common.IsIn(done.P, with))
+		v, _ := done.P.(int)
+		if v%2 == 1 {
+			assert.Equal(t, nil, done.R)
+			assert.Equal(t, fmt.Sprintf("× action failed ( %v, itself error )", done.P), done.E.Error())
+		} else {
+			assert.Equal(t, true, common.IsIn(done.R, with))
+			assert.Equal(t, nil, done.E)
+		}
+	}
+}
+
+type blindlyRetryJob struct {
+	*Job
+	maxRetry, curRetry int
+}
+
+func (bj *blindlyRetryJob) Worth(Done) bool {
+	return true // blindly return true
+}
+
+func (bj *blindlyRetryJob) Forgo() bool {
+	bj.curRetry++
+	return bj.curRetry >= bj.maxRetry
+}
+
+func (bj *blindlyRetryJob) Act(ctx context.Context, p interface{}) (r interface{}, e error) {
+	return nil, nil
+}
+
+func TestBlindlyRetryJob(t *testing.T) {
+	brj := &blindlyRetryJob{NewJob(logging.GetLogger(WHAT), runtime.NumCPU()), 3, 0}
+	brj.ActionHandler(brj).RetryHandler(brj)
+	with := []interface{}{"blindly retry job"}
+	allDone := brj.Run(context.Background(), with)
+	assert.Equal(t, brj.maxRetry, brj.curRetry)
+	assert.Equal(t, 1, len(allDone))
+	for _, done := range allDone {
+		assert.Equal(t, true, common.IsIn(done.P, with))
+		assert.Equal(t, nil, done.R)
+		assert.Equal(t, nil, done.E)
+	}
+}
+
+func TestBlindlyRetryJobWithNil(t *testing.T) {
+	brj := &blindlyRetryJob{NewJob(logging.GetLogger(WHAT), runtime.NumCPU()), 5, 0}
+	brj.ActionHandler(brj).RetryHandler(brj)
+	with := []interface{}{nil}
+	allDone := brj.Run(context.Background(), with)
+	assert.Equal(t, brj.maxRetry, brj.curRetry)
+	assert.Equal(t, 1, len(allDone))
+	for _, done := range allDone {
+		assert.Equal(t, true, common.IsIn(done.P, with))
+		assert.Equal(t, nil, done.R)
+		assert.Equal(t, nil, done.E)
 	}
 }
