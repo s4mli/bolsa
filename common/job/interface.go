@@ -7,61 +7,39 @@ import (
 	"github.com/samwooo/bolsa/common/logging"
 )
 
-type hookType int
+type strategyType int
 
 const (
-	Batch hookType = iota
-	Action
-	Retry
+	typeBatch strategyType = iota
+	typeLabor
+	typeRetry
 )
 
-func (ht *hookType) String() string {
+func (ht *strategyType) String() string {
 	switch *ht {
-	case Batch:
+	case typeBatch:
 		return "batch"
-	case Action:
-		return "action"
-	case Retry:
+	case typeLabor:
+		return "labor"
+	case typeRetry:
 		return "retry"
 	}
 	return "?"
 }
 
-//////////
-// Job //
-type Job struct {
-	Logger  logging.Logger
-	workers int
-	batchHandler
-	actionHandler
-	retryHandler
-	errorHandler
+////////////////
+// Job Error //
+type Error struct {
+	st strategyType
+	error
 }
 
-/////////////////
-// batch hook //
-type batchHandler interface {
-	Size() int
-	Batch(context.Context, []interface{}) (interface{}, error)
+func (je Error) Error() string {
+	return fmt.Sprintf("× %s failed %s", je.st.String(), je.error.Error())
 }
 
-//////////////////
-// action hook //
-type actionHandler interface {
-	Act(ctx context.Context, p interface{}) (r interface{}, e error)
-}
-
-/////////////////
-// retry hook //
-type retryHandler interface {
-	Worth(Done) bool
-	Forgo() bool
-}
-
-/////////////////
-// error hook //
-type errorHandler interface {
-	OnError(error)
+func newError(st strategyType, err error) *Error {
+	return &Error{st, err}
 }
 
 /////////////////
@@ -75,17 +53,52 @@ func (d *Done) String() string {
 	return fmt.Sprintf(" * Params: %+v\n * Result: ( %+v , %+v )", d.P, d.R, d.E)
 }
 
-////////////////
-// Job Error //
-type Error struct {
-	hook hookType
-	error
+/////////////////////
+// batch strategy //
+type batchStrategy interface {
+	Size() int
+	Reduce(context.Context, []interface{}) (interface{}, error)
 }
 
-func (je Error) Error() string {
-	return fmt.Sprintf("× %s failed %s", je.hook.String(), je.error.Error())
+/////////////////////
+// labor strategy //
+type laborStrategy interface {
+	Work(ctx context.Context, p interface{}) (r interface{}, e error)
 }
 
-func newError(ht hookType, err error) *Error {
-	return &Error{ht, err}
+/////////////////////
+// retry strategy //
+type retryStrategy interface {
+	Worth(Done) bool
+	Forgo() bool
+}
+
+/////////////////////
+// error strategy //
+type errorStrategy interface {
+	OnError(error)
+}
+
+////////////////////////
+// Job data supplier //
+type Supplier interface {
+	// Job will drain data from a Supplier running in a single goroutine
+	Drain(context.Context) (interface{}, error)
+	Empty() bool
+}
+
+//////////
+// Job //
+/* 1. Drain data from Supplier 	( supplier.Drain() )		( 1 worker )	*/
+/* 2. Group data into batch 	( batchStrategy.Size() )	( 1 worker )	*/
+/* 3. Reduce batched data 		( batchStrategy.Reduce() )	( N workers )	*/
+/* 4. Work on reduced data 		( laborStrategy.Work() )	( N workers )	*/
+/* 5. Retry batch & labor failures on 2 new Jobs 			( N workers )	*/
+type Job struct {
+	Logger  logging.Logger
+	workers int
+	batchStrategy
+	laborStrategy
+	retryStrategy
+	errorStrategy
 }

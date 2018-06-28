@@ -22,11 +22,11 @@ func (myself *reduceJ) Size() int {
 	return myself.dataSize
 }
 
-func (*reduceJ) Batch(ctx context.Context, groupedMash []interface{}) (interface{}, error) {
+func (*reduceJ) Reduce(ctx context.Context, groupedMash []interface{}) (interface{}, error) {
 	return groupedMash, nil
 }
 
-func (myself *reduceJ) Act(ctx context.Context, p interface{}) (r interface{}, e error) {
+func (myself *reduceJ) Work(ctx context.Context, p interface{}) (r interface{}, e error) {
 	var reasons []string
 	if myself.iterator != nil {
 		if data, ok := p.([]interface{}); !ok {
@@ -50,7 +50,7 @@ func Reduce(ctx context.Context, logger logging.Logger, data []interface{}, memo
 
 	start := time.Now()
 	r := &reduceJ{job.NewJob(logger, 1), len(data), memo, iterator}
-	done := r.BatchHandler(r).ActionHandler(r).Run(ctx, data)
+	done := r.BatchStrategy(r).LaborStrategy(r).Run(ctx, job.NewDataSupplier(data))
 	r.Logger.Infof("done in %+v with %+v", time.Since(start), done)
 	if len(done) <= 0 {
 		return memo, fmt.Errorf("unknown error")

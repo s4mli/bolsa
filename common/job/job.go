@@ -8,150 +8,189 @@ import (
 	"github.com/samwooo/bolsa/common/logging"
 )
 
-func (j *Job) feed(ctx context.Context, mash []interface{}) <-chan interface{} {
-	type batchFn func(context.Context, []interface{}) (interface{}, error)
-
-	feedWithBatch := func(batchSize int, batch batchFn) <-chan interface{} {
-		mashLen := len(mash)
-		group := mashLen / batchSize
-		if mashLen%batchSize > 0 {
-			group += 1
-		}
-		in := make(chan interface{}, group)
-		waiter := make(chan bool, group)
-		for k := 0; k < group; k++ {
-			start := k * batchSize
-			end := start + batchSize
-			if end > mashLen {
-				end = mashLen
+func (j *Job) drain(ctx context.Context, s Supplier) <-chan []interface{} {
+	in := make(chan []interface{}, j.workers)
+	go func() {
+		for !s.Empty() {
+			if data, err := s.Drain(ctx); err != nil {
+				j.Logger.Errorf("× drain failed ( %s )", err.Error())
+			} else {
+				j.Logger.Infof("√ drain succeed ( %+v )", data)
+				in <- []interface{}{data}
 			}
-			go func(groupedMash []interface{}, in chan<- interface{}, waiter chan<- bool) {
-				if data, err := batch(ctx, groupedMash); err != nil {
-					j.Logger.Errorf("× batch failed ( %+v, %s )", groupedMash, err.Error())
-					in <- Done{
-						groupedMash,
-						data,
-						newError(Batch, fmt.Errorf("( %+v, %s )", groupedMash, err.Error()))}
-				} else {
-					j.Logger.Infof("√ batch succeed ( %+v, %+v )", groupedMash, data)
-					in <- data
+		}
+		close(in)
+	}()
+
+	if j.batchStrategy == nil {
+		j.Logger.Info("drain batch ×")
+		return in
+	} else {
+		j.Logger.Infof("drain batch √ ( size %d )", j.batchStrategy.Size())
+		out := make(chan []interface{}, j.workers)
+		go func() {
+			var batched []interface{}
+			for d := range in {
+				batched = append(batched, d...)
+				if len(batched) == j.batchStrategy.Size() {
+					j.Logger.Infof("√ drain batch succeed ( %+v )", batched)
+					out <- batched
+					batched = []interface{}{}
+				}
+			}
+			if len(batched) > 0 {
+				j.Logger.Infof("√ drain batch succeed ( %+v )", batched)
+				out <- batched
+				batched = []interface{}{}
+			}
+			close(out)
+		}()
+		return out
+	}
+}
+
+func (j *Job) feed(ctx context.Context, groupedDataCh <-chan []interface{}) <-chan interface{} {
+	type reduceFn func(context.Context, []interface{}) (interface{}, error)
+
+	feedWithBatch := func(reduce reduceFn) <-chan interface{} {
+		in := make(chan interface{}, j.workers)
+		waiter := make(chan bool, j.workers)
+
+		for k := 0; k < j.workers; k++ {
+			go func() {
+				for groupedData := range groupedDataCh {
+					if data, err := reduce(ctx, groupedData); err != nil {
+						j.Logger.Errorf("× batch failed ( %+v, %s )", groupedData, err.Error())
+						in <- Done{
+							groupedData,
+							data,
+							newError(typeBatch, fmt.Errorf("( %+v, %s )", groupedData, err.Error()))}
+					} else {
+						j.Logger.Infof("√ batch succeed ( %+v, %+v )", groupedData, data)
+						in <- data
+					}
 				}
 				waiter <- true
-			}(mash[start:end], in, waiter)
+			}()
 		}
-		go func(in chan<- interface{}, waiter <-chan bool) {
-			for i := 0; i < group; i++ {
+
+		go func() {
+			for i := 0; i < j.workers; i++ {
 				<-waiter
 			}
 			close(in)
-		}(in, waiter)
+		}()
 		return in
 	}
-	if j.batchHandler != nil {
-		j.Logger.Infof("batch √ ( size %d )", j.batchHandler.Size())
-		return feedWithBatch(j.batchHandler.Size(), j.batchHandler.Batch)
+
+	if j.batchStrategy != nil {
+		j.Logger.Infof("batch √ ( size %d )", j.batchStrategy.Size())
+		return feedWithBatch(j.batchStrategy.Reduce)
 	} else {
 		j.Logger.Info("batch ×")
-		return feedWithBatch(1, func(ctx context.Context, mash []interface{}) (interface{}, error) {
+		return feedWithBatch(func(ctx context.Context, mash []interface{}) (interface{}, error) {
 			return mash[0], nil
 		})
 	}
 }
 
 func (j *Job) chew(ctx context.Context, in <-chan interface{}) <-chan Done {
-	type actFn func(ctx context.Context, p interface{}) (r interface{}, e error)
+	type workFn func(ctx context.Context, p interface{}) (r interface{}, e error)
 
-	chewWithAction := func(act actFn) <-chan Done {
+	chewWithLabor := func(work workFn) <-chan Done {
 		out := make(chan Done, j.workers)
 		waiter := make(chan bool, j.workers)
+
 		for i := 0; i < j.workers; i++ {
-			go func(in <-chan interface{}, out chan<- Done, waiter chan<- bool) {
+			go func() {
 				for para := range in {
 					if done, ok := para.(Done); ok {
-						j.Logger.Infof("√ action succeed, pipe error ( %s ) through", done.E.Error())
+						j.Logger.Infof("√ labor succeed, pipe error ( %s ) through", done.E.Error())
 						out <- done // batch error
 					} else {
-						ret, err := act(ctx, para)
+						ret, err := work(ctx, para)
 						if err != nil {
-							j.Logger.Errorf("× action failed ( %+v, %s )", para, err.Error())
+							j.Logger.Errorf("× labor failed ( %+v, %s )", para, err.Error())
 							out <- Done{
 								para,
 								ret, // be tolerant with error, keep last successful ret
-								newError(Action, fmt.Errorf("( %+v, %s )", para, err.Error()))}
+								newError(typeLabor, fmt.Errorf("( %+v, %s )", para, err.Error()))}
 						} else {
-							j.Logger.Infof("√ action succeed ( %+v, %+v)", para, ret)
+							j.Logger.Infof("√ labor succeed ( %+v, %+v)", para, ret)
 							out <- Done{para, ret, nil}
 						}
 					}
 				}
 				waiter <- true
-			}(in, out, waiter)
+			}()
 		}
-		go func(out chan<- Done, waiter <-chan bool) {
+
+		go func() {
 			for i := 0; i < j.workers; i++ {
 				<-waiter
 			}
 			close(out)
-		}(out, waiter)
+		}()
 		return out
 	}
-	if j.actionHandler != nil {
-		j.Logger.Infof("action √ ( workers %d )", j.workers)
-		return chewWithAction(j.actionHandler.Act)
+
+	if j.laborStrategy != nil {
+		j.Logger.Infof("labor √ ( workers %d )", j.workers)
+		return chewWithLabor(j.laborStrategy.Work)
 	} else {
-		j.Logger.Infof("action ×")
-		return chewWithAction(func(ctx context.Context, para interface{}) (interface{}, error) {
+		j.Logger.Infof("labor ×")
+		return chewWithLabor(func(ctx context.Context, para interface{}) (interface{}, error) {
 			return para, nil
 		})
 	}
 }
 
-func (j *Job) digest(ctx context.Context, out <-chan Done) <-chan []Done {
+func (j *Job) digest(ctx context.Context, in <-chan Done) <-chan []Done {
 	output := make(chan []Done)
-	go func(out <-chan Done, output chan<- []Done) {
+	go func() {
 		var results []Done
-		for r := range out {
-			if r.E != nil && j.errorHandler != nil {
-				j.errorHandler.OnError(r.E)
+		for r := range in {
+			if r.E != nil && j.errorStrategy != nil {
+				j.errorStrategy.OnError(r.E)
 			}
 			results = append(results, r)
 		}
 		output <- results
-	}(out, output)
+	}()
 	return output
 }
 
-func (j *Job) run(ctx context.Context, with []interface{}) []Done {
-	return <-j.digest(ctx, j.chew(ctx, j.feed(ctx, with)))
+func (j *Job) runWithSupplier(ctx context.Context, s Supplier) []Done {
+	return <-j.digest(ctx, j.chew(ctx, j.feed(ctx, j.drain(ctx, s))))
 }
 
-func (j *Job) BatchHandler(bh batchHandler) *Job {
-	j.batchHandler = bh
+func (j *Job) BatchStrategy(bh batchStrategy) *Job {
+	j.batchStrategy = bh
 	return j
 }
 
-func (j *Job) ActionHandler(ah actionHandler) *Job {
-	j.actionHandler = ah
+func (j *Job) LaborStrategy(lh laborStrategy) *Job {
+	j.laborStrategy = lh
 	return j
 }
 
-func (j *Job) RetryHandler(rh retryHandler) *Job {
-	j.retryHandler = rh
+func (j *Job) RetryStrategy(rh retryStrategy) *Job {
+	j.retryStrategy = rh
 	return j
 }
 
-func (j *Job) ErrorHandler(eh errorHandler) *Job {
-	j.errorHandler = eh
+func (j *Job) ErrorStrategy(eh errorStrategy) *Job {
+	j.errorStrategy = eh
 	return j
 }
 
-func (j *Job) Run(ctx context.Context, with []interface{}) []Done {
+func (j *Job) Run(ctx context.Context, s Supplier) []Done {
 	child, cancelFn := context.WithCancel(ctx)
 	defer cancelFn()
 
 	var finalAllDone []Done
-	allDone := j.run(child, with)
-	if j.retryHandler == nil {
+	allDone := j.runWithSupplier(child, s)
+	if j.retryStrategy == nil {
 		j.Logger.Info("retry ×")
 		finalAllDone = allDone
 	} else {
@@ -159,11 +198,11 @@ func (j *Job) Run(ctx context.Context, with []interface{}) []Done {
 		for {
 			var batchRetries []interface{}
 			var batchFailed []Done
-			var actionRetries []interface{}
-			var actionFailed []Done
+			var laborRetries []interface{}
+			var laborFailed []Done
 			for _, done := range allDone {
-				if j.retryHandler.Worth(done) {
-					if e, ok := done.E.(*Error); ok && e.hook == Batch {
+				if j.retryStrategy.Worth(done) {
+					if e, ok := done.E.(*Error); ok && e.st == typeBatch {
 						if groupedPara, isArray := done.P.([]interface{}); isArray {
 							batchRetries = append(batchRetries, groupedPara...)
 							for _, para := range groupedPara {
@@ -173,35 +212,39 @@ func (j *Job) Run(ctx context.Context, with []interface{}) []Done {
 							j.Logger.Error("× cast para failed, skip retry")
 						}
 					} else {
-						actionRetries = append(actionRetries, done.P)
-						actionFailed = append(actionFailed, done)
+						laborRetries = append(laborRetries, done.P)
+						laborFailed = append(laborFailed, done)
 					}
 				} else { // not worth retrying
 					finalAllDone = append(finalAllDone, done)
 				}
 			}
 
-			if j.retryHandler.Forgo() {
+			if j.retryStrategy.Forgo() {
 				if len(batchFailed) > 0 {
 					finalAllDone = append(finalAllDone, batchFailed...)
 				}
-				if len(actionFailed) > 0 {
-					finalAllDone = append(finalAllDone, actionFailed...)
+				if len(laborFailed) > 0 {
+					finalAllDone = append(finalAllDone, laborFailed...)
 				}
-				j.Logger.Infof("√ retry ended ( %d batch failures, %d action failures )",
-					len(batchFailed), len(actionFailed))
+				j.Logger.Infof("√ retry ended ( %d batch failures, %d labor failures )",
+					len(batchFailed), len(laborFailed))
 				break
 			} else {
+				runJobWithData := func(ctx context.Context, j *Job, data []interface{}) []Done {
+					return j.runWithSupplier(ctx, NewDataSupplier(data))
+				}
+
 				allDone = []Done{}
-				if len(actionRetries) > 0 {
-					j.Logger.Infof("√ retry ( %d ) on ( %d action failures )", retries, len(actionRetries))
-					allDone = append(allDone, NewJob(j.Logger, j.workers).ActionHandler(
-						j.actionHandler).run(child, actionRetries)...)
+				if len(laborRetries) > 0 {
+					j.Logger.Infof("√ retry ( %d ) on ( %d labor failures )", retries, len(laborRetries))
+					allDone = append(allDone, runJobWithData(child, NewJob(j.Logger, j.workers).LaborStrategy(
+						j.laborStrategy), laborRetries)...)
 				}
 				if len(batchRetries) > 0 {
 					j.Logger.Infof("√ retry ( %d ) on ( %d batch failures )", retries, len(batchRetries))
-					allDone = append(allDone, NewJob(j.Logger, j.workers).BatchHandler(j.batchHandler).ActionHandler(
-						j.actionHandler).run(child, batchRetries)...)
+					allDone = append(allDone, runJobWithData(child, NewJob(j.Logger, j.workers).BatchStrategy(
+						j.batchStrategy).LaborStrategy(j.laborStrategy), batchRetries)...)
 				}
 				retries++
 			}

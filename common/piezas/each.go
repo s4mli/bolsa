@@ -13,7 +13,7 @@ type eachJ struct {
 	iterator func(interface{}) (interface{}, error)
 }
 
-func (myself *eachJ) Act(ctx context.Context, p interface{}) (r interface{}, e error) {
+func (myself *eachJ) Work(ctx context.Context, p interface{}) (r interface{}, e error) {
 	if myself.iterator != nil {
 		return myself.iterator(p)
 	} else {
@@ -26,7 +26,7 @@ func Each(ctx context.Context, logger logging.Logger, data []interface{},
 
 	start := time.Now()
 	e := &eachJ{job.NewJob(logger, 0), ite}
-	done := e.ActionHandler(e).Run(ctx, data)
+	done := e.LaborStrategy(e).Run(ctx, job.NewDataSupplier(data))
 	e.Logger.Infof("done in %+v with %+v", time.Since(start), done)
 	return done
 }
