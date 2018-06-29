@@ -63,7 +63,6 @@ func (j *Job) drain(ctx context.Context, s Supplier) <-chan []interface{} {
 				if len(batched) > 0 {
 					j.Logger.Infof("√ batch succeed ( %+v )", batched)
 					out <- batched
-					batched = []interface{}{}
 				}
 				outWaiter <- true
 			}()
