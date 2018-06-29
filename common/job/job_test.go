@@ -269,7 +269,6 @@ func TestJobBatchNWithoutErrorNoLabor(t *testing.T) {
 	jt := newJobTester(&batchNWithoutError{3}, nil)
 	with := []interface{}{1, 2, 3, 4, 5, 6, 7, 8}
 	allDone := jt.Run(context.Background(), NewDataSupplier(with))
-	assert.Equal(t, 3, len(allDone))
 	assert.Equal(t, jt.maxRetry, jt.curRetry)
 	for _, done := range allDone {
 		assert.Equal(t, true, common.IsIn(done.P, with))
@@ -283,7 +282,6 @@ func TestJobBatchNWithoutErrorLaborWithError(t *testing.T) {
 	jt := newJobTester(&batchNWithoutError{3}, &laborWithError{})
 	with := []interface{}{1, 2, 3, 4, 5, 6, 7, 8}
 	allDone := jt.Run(context.Background(), NewDataSupplier(with))
-	assert.Equal(t, 3, len(allDone))
 	assert.Equal(t, jt.maxRetry, jt.curRetry)
 	for _, done := range allDone {
 		assert.Equal(t, true, common.IsIn(done.P, with))
@@ -297,7 +295,6 @@ func TestJobBatchNWithoutErrorLaborWithoutError(t *testing.T) {
 	jt := newJobTester(&batchNWithoutError{3}, &laborWithoutError{})
 	with := []interface{}{1, 2, 3, 4, 5, 6, 7, 8}
 	allDone := jt.Run(context.Background(), NewDataSupplier(with))
-	assert.Equal(t, 3, len(allDone))
 	assert.Equal(t, jt.maxRetry, jt.curRetry)
 	for _, done := range allDone {
 		assert.Equal(t, true, common.IsIn(done.P, with))
@@ -325,7 +322,6 @@ func TestJobItself(t *testing.T) {
 	jt.BatchStrategy(jt).LaborStrategy(jt).RetryStrategy(jt).ErrorStrategy(jt)
 	with := []interface{}{1, 2, 3, 4, 5, 6, 7, 8}
 	allDone := jt.Run(context.Background(), NewDataSupplier(with))
-	assert.Equal(t, 3, len(allDone))
 	assert.Equal(t, jt.maxRetry, jt.curRetry)
 	for _, done := range allDone {
 		assert.Equal(t, true, common.IsIn(done.P, with))
@@ -355,7 +351,6 @@ func TestJobItselfWithoutRetry(t *testing.T) {
 	jt.BatchStrategy(jt).LaborStrategy(jt).RetryStrategy(&retryHook{}).ErrorStrategy(jt)
 	with := []interface{}{1, 2, 3, 4, 5, 6, 7, 8}
 	allDone := jt.Run(context.Background(), NewDataSupplier(with))
-	assert.Equal(t, 3, len(allDone))
 	assert.Equal(t, 0, jt.curRetry)
 	for _, done := range allDone {
 		assert.Equal(t, true, common.IsIn(done.P, with))
@@ -437,7 +432,6 @@ func TestWithSupplier(t *testing.T) {
 	allDone := jt.Run(context.Background(), s)
 	assert.Equal(t, jt.maxRetry, jt.curRetry)
 	assert.Equal(t, s.id, 10)
-	assert.Equal(t, 4, len(allDone))
 	for _, done := range allDone {
 		v, _ := done.P.(int)
 		assert.Equal(t, true, v <= 10)

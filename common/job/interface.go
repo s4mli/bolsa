@@ -81,7 +81,7 @@ type errorStrategy interface {
 
 ////////////////////////
 // Job data supplier //
-type Supplier interface {
+type supplier interface {
 	// Don't care the error really
 	Drain(context.Context) (interface{}, bool)
 }

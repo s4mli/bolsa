@@ -8,7 +8,7 @@ import (
 	"github.com/samwooo/bolsa/common/logging"
 )
 
-func (j *Job) drain(ctx context.Context, s Supplier) <-chan []interface{} {
+func (j *Job) drain(ctx context.Context, s supplier) <-chan []interface{} {
 
 	waitAndExitGracefully := func(workers int, ch chan<- []interface{}, done <-chan bool) {
 		go func() {
@@ -205,7 +205,7 @@ func (j *Job) digest(ctx context.Context, in <-chan Done) <-chan []Done {
 	return out
 }
 
-func (j *Job) runWithSupplier(ctx context.Context, s Supplier) []Done {
+func (j *Job) runWithSupplier(ctx context.Context, s supplier) []Done {
 	return <-j.digest(ctx, j.chew(ctx, j.feed(ctx, j.drain(ctx, s))))
 }
 
@@ -229,7 +229,7 @@ func (j *Job) ErrorStrategy(eh errorStrategy) *Job {
 	return j
 }
 
-func (j *Job) Run(ctx context.Context, s Supplier) []Done {
+func (j *Job) Run(ctx context.Context, s supplier) []Done {
 	child, cancelFn := context.WithCancel(ctx)
 	defer cancelFn()
 

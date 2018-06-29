@@ -25,6 +25,6 @@ func (ds *dataSupplier) Drain(ctx context.Context) (interface{}, bool) {
 	return d, ok
 }
 
-func NewDataSupplier(data []interface{}) Supplier {
+func NewDataSupplier(data []interface{}) supplier {
 	return &dataSupplier{data, 0, sync.Mutex{}}
 }
