@@ -82,18 +82,12 @@ type errorStrategy interface {
 ////////////////////////
 // Job data supplier //
 type Supplier interface {
-	// Job will drain data from a Supplier running in a single goroutine
-	Drain(context.Context) (interface{}, error)
-	Empty() bool
+	// Don't care the error really
+	Drain(context.Context) (interface{}, bool)
 }
 
 //////////
 // Job //
-/* 1. Drain data from Supplier 	( supplier.Drain() )		( 1 worker )	*/
-/* 2. Group data into batch 	( batchStrategy.Size() )	( 1 worker )	*/
-/* 3. Reduce batched data 		( batchStrategy.Reduce() )	( N workers )	*/
-/* 4. Work on reduced data 		( laborStrategy.Work() )	( N workers )	*/
-/* 5. Retry batch & labor failures on 2 new Jobs 			( N workers )	*/
 type Job struct {
 	Logger  logging.Logger
 	workers int

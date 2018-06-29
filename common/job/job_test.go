@@ -7,6 +7,8 @@ import (
 	"strings"
 	"testing"
 
+	"sync"
+
 	"github.com/samwooo/bolsa/common"
 	"github.com/samwooo/bolsa/common/logging"
 	"github.com/stretchr/testify/assert"
@@ -414,20 +416,24 @@ func TestBlindlyRetryJobWithNil(t *testing.T) {
 	}
 }
 
-type aSupplier struct{ id int }
-
-func (a *aSupplier) Drain(ctx context.Context) (interface{}, error) {
-	a.id++
-	return a.id, nil
+type aSupplier struct {
+	id int
+	mx sync.Mutex
 }
 
-func (a *aSupplier) Empty() bool {
-	return a.id >= 10
+func (a *aSupplier) Drain(ctx context.Context) (interface{}, bool) {
+	a.mx.Lock()
+	ok := a.id < 10
+	if ok {
+		a.id++
+	}
+	defer a.mx.Unlock()
+	return a.id, ok
 }
 
 func TestWithSupplier(t *testing.T) {
 	jt := newJobTester(&batchNWithoutError{3}, &laborWithoutError{})
-	s := &aSupplier{0}
+	s := &aSupplier{0, sync.Mutex{}}
 	allDone := jt.Run(context.Background(), s)
 	assert.Equal(t, jt.maxRetry, jt.curRetry)
 	assert.Equal(t, s.id, 10)

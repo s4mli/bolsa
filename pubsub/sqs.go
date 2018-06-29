@@ -154,7 +154,8 @@ func (q *SQSQueue) Push(ctx context.Context, body []interface{}) ([]EventId, err
 	}
 
 	pj := &pushJob{job.NewJob(q.logger, 0), q, 0, 3}
-	return handleResults(pj.BatchStrategy(pj).LaborStrategy(pj).RetryStrategy(pj).ErrorStrategy(pj).Run(ctx, body))
+	return handleResults(pj.BatchStrategy(pj).LaborStrategy(pj).RetryStrategy(
+		pj).ErrorStrategy(pj).Run(ctx, job.NewDataSupplier(body)))
 }
 
 func (q *SQSQueue) Pop(ctx context.Context) ([]interface{}, error) {
