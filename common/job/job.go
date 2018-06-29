@@ -9,47 +9,37 @@ import (
 )
 
 func (j *Job) drain(ctx context.Context, s Supplier) <-chan []interface{} {
-	in := make(chan []interface{}, j.workers)
-	inWaiter := make(chan bool, j.workers)
 
-	waitAndExitGracefully := func(workers int, in chan<- []interface{}, waiter <-chan bool) {
+	waitAndExitGracefully := func(workers int, ch chan<- []interface{}, done <-chan bool) {
 		go func() {
 			for i := 0; i < workers; i++ {
-				<-waiter
+				<-done
 			}
-			close(in)
+			close(ch)
 		}()
 	}
 
-	doDrain := func(in chan<- []interface{}, inWaiter chan<- bool) {
-		go func() {
-			for {
-				if data, ok := s.Drain(ctx); ok {
-					j.Logger.Infof("√ drain succeed ( %+v )", data)
-					in <- []interface{}{data}
-				} else {
-					break
+	doDrain := func(workers int, in chan<- []interface{}) <-chan bool {
+		done := make(chan bool, workers)
+		for i := 0; i < workers; i++ {
+			go func() {
+				for {
+					if data, ok := s.Drain(ctx); ok {
+						j.Logger.Infof("√ drain succeed ( %+v )", data)
+						in <- []interface{}{data}
+					} else {
+						break
+					}
 				}
-			}
-			inWaiter <- true
-		}()
+				done <- true
+			}()
+		}
+		return done
 	}
 
-	// Drain in N goroutines
-	for k := 0; k < j.workers; k++ {
-		doDrain(in, inWaiter)
-	}
-	waitAndExitGracefully(j.workers, in, inWaiter)
-
-	if j.batchStrategy == nil {
-		j.Logger.Info("batch ×")
-		return in
-	} else {
-		j.Logger.Infof("batch √ ( size %d )", j.batchStrategy.Size())
-		out := make(chan []interface{}, j.workers)
-		outWaiter := make(chan bool, j.workers)
-
-		doBatch := func(in <-chan []interface{}, out chan<- []interface{}, outWaiter chan<- bool) {
+	doBatch := func(workers int, in <-chan []interface{}, out chan<- []interface{}) <-chan bool {
+		done := make(chan bool, workers)
+		for i := 0; i < workers; i++ {
 			go func() {
 				var batched []interface{}
 				for d := range in {
@@ -64,75 +54,83 @@ func (j *Job) drain(ctx context.Context, s Supplier) <-chan []interface{} {
 					j.Logger.Infof("√ batch succeed ( %+v )", batched)
 					out <- batched
 				}
-				outWaiter <- true
+				done <- true
 			}()
 		}
+		return done
+	}
 
-		// Batch in 1 single goroutine
-		workers := 1
-		for k := 0; k < workers; k++ {
-			doBatch(in, out, outWaiter)
-		}
-		waitAndExitGracefully(workers, out, outWaiter)
+	// Drain in N goroutines
+	in := make(chan []interface{}, j.workers)
+	waitAndExitGracefully(j.workers, in, doDrain(j.workers, in))
+
+	if j.batchStrategy == nil {
+		j.Logger.Info("batch ×")
+		return in
+	} else {
+		j.Logger.Infof("batch √ ( size %d )", j.batchStrategy.Size())
+		// Batch in N goroutines
+		out := make(chan []interface{}, j.workers)
+		waitAndExitGracefully(j.workers, out, doBatch(j.workers, in, out))
 		return out
 	}
 }
 
-func (j *Job) feed(ctx context.Context, groupedDataCh <-chan []interface{}) <-chan interface{} {
-	type reduceFn func(context.Context, []interface{}) (interface{}, error)
+func (j *Job) feed(ctx context.Context, in <-chan []interface{}) <-chan interface{} {
 
-	waitAndExitGracefully := func(workers int, in chan<- interface{}, waiter <-chan bool) {
+	waitAndExitGracefully := func(workers int, ch chan<- interface{}, done <-chan bool) {
 		go func() {
 			for i := 0; i < workers; i++ {
-				<-waiter
+				<-done
 			}
-			close(in)
+			close(ch)
 		}()
 	}
 
-	feedWithReduce := func(reduce reduceFn) <-chan interface{} {
-		out := make(chan interface{}, j.workers)
-		outWaiter := make(chan bool, j.workers)
+	type reducer func(context.Context, []interface{}) (interface{}, error)
 
-		doReduce := func(in <-chan []interface{}, out chan<- interface{}, outWaiter chan<- bool) {
+	doReduce := func(workers int, reduce reducer, in <-chan []interface{}, out chan<- interface{}) <-chan bool {
+		done := make(chan bool, workers)
+		for i := 0; i < workers; i++ {
 			go func() {
-				for groupedData := range in {
-					if data, err := reduce(ctx, groupedData); err != nil {
-						j.Logger.Errorf("× reduce failed ( %+v, %s )", groupedData, err.Error())
+				for batchedData := range in {
+					if data, err := reduce(ctx, batchedData); err != nil {
+						j.Logger.Errorf("× reduce failed ( %+v, %s )", batchedData, err.Error())
 						out <- Done{
-							groupedData,
+							batchedData,
 							data,
-							newError(typeBatch, fmt.Errorf("( %+v, %s )", groupedData, err.Error()))}
+							newError(typeBatch, fmt.Errorf("( %+v, %s )", batchedData, err.Error()))}
 					} else {
-						j.Logger.Infof("√ reduce succeed ( %+v, %+v )", groupedData, data)
+						j.Logger.Infof("√ reduce succeed ( %+v, %+v )", batchedData, data)
 						out <- data
 					}
 				}
-				outWaiter <- true
+				done <- true
 			}()
 		}
+		return done
+	}
 
-		// Reduce in N goroutines
-		for k := 0; k < j.workers; k++ {
-			doReduce(groupedDataCh, out, outWaiter)
-		}
-		waitAndExitGracefully(j.workers, out, outWaiter)
+	// Reduce in N goroutines
+	feedWithReduce := func(workers int, reduce reducer) <-chan interface{} {
+		out := make(chan interface{}, workers)
+		waitAndExitGracefully(workers, out, doReduce(workers, reduce, in, out))
 		return out
 	}
 
 	if j.batchStrategy != nil {
 		j.Logger.Infof("reduce √ ( size %d )", j.batchStrategy.Size())
-		return feedWithReduce(j.batchStrategy.Reduce)
+		return feedWithReduce(j.workers, j.batchStrategy.Reduce)
 	} else {
 		j.Logger.Info("reduce ×")
-		return feedWithReduce(func(ctx context.Context, mash []interface{}) (interface{}, error) {
-			return mash[0], nil
-		})
+		return feedWithReduce(j.workers,
+			func(ctx context.Context, batchedData []interface{}) (interface{}, error) {
+				return batchedData[0], nil
+			})
 	}
 }
 
 func (j *Job) chew(ctx context.Context, in <-chan interface{}) <-chan Done {
-	type workFn func(ctx context.Context, p interface{}) (r interface{}, e error)
 
 	waitAndExitGracefully := func(workers int, in chan<- Done, waiter <-chan bool) {
 		go func() {
@@ -143,16 +141,16 @@ func (j *Job) chew(ctx context.Context, in <-chan interface{}) <-chan Done {
 		}()
 	}
 
-	chewWithLabor := func(work workFn) <-chan Done {
-		out := make(chan Done, j.workers)
-		outWaiter := make(chan bool, j.workers)
+	type worker func(ctx context.Context, p interface{}) (r interface{}, e error)
 
-		doWork := func(in <-chan interface{}, out chan<- Done, outWaiter chan<- bool) {
+	doWork := func(workers int, work worker, in <-chan interface{}, out chan<- Done) <-chan bool {
+		done := make(chan bool, workers)
+		for i := 0; i < j.workers; i++ {
 			go func() {
 				for para := range in {
-					if done, ok := para.(Done); ok {
-						j.Logger.Infof("√ labor succeed, pipe error ( %s ) through", done.E.Error())
-						out <- done // batch error
+					if batchDone, ok := para.(Done); ok {
+						j.Logger.Infof("√ labor succeed, pipe error ( %s ) through", batchDone.E.Error())
+						out <- batchDone // batch error
 					} else {
 						ret, err := work(ctx, para)
 						if err != nil {
@@ -167,31 +165,33 @@ func (j *Job) chew(ctx context.Context, in <-chan interface{}) <-chan Done {
 						}
 					}
 				}
-				outWaiter <- true
+				done <- true
 			}()
 		}
+		return done
+	}
 
-		// Work in N goroutines
-		for i := 0; i < j.workers; i++ {
-			doWork(in, out, outWaiter)
-		}
-		waitAndExitGracefully(j.workers, out, outWaiter)
+	// Work in N goroutines
+	chewWithLabor := func(workers int, work worker) <-chan Done {
+		out := make(chan Done, workers)
+		waitAndExitGracefully(j.workers, out, doWork(workers, work, in, out))
 		return out
 	}
 
 	if j.laborStrategy != nil {
 		j.Logger.Infof("labor √ ( workers %d )", j.workers)
-		return chewWithLabor(j.laborStrategy.Work)
+		return chewWithLabor(j.workers, j.laborStrategy.Work)
 	} else {
 		j.Logger.Infof("labor ×")
-		return chewWithLabor(func(ctx context.Context, para interface{}) (interface{}, error) {
-			return para, nil
-		})
+		return chewWithLabor(j.workers,
+			func(ctx context.Context, para interface{}) (interface{}, error) {
+				return para, nil
+			})
 	}
 }
 
 func (j *Job) digest(ctx context.Context, in <-chan Done) <-chan []Done {
-	output := make(chan []Done)
+	out := make(chan []Done)
 	go func() {
 		var results []Done
 		for r := range in {
@@ -200,9 +200,9 @@ func (j *Job) digest(ctx context.Context, in <-chan Done) <-chan []Done {
 			}
 			results = append(results, r)
 		}
-		output <- results
+		out <- results
 	}()
-	return output
+	return out
 }
 
 func (j *Job) runWithSupplier(ctx context.Context, s Supplier) []Done {
