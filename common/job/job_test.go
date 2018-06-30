@@ -418,7 +418,7 @@ type aSupplier struct {
 
 func (a *aSupplier) Drain(ctx context.Context) (interface{}, bool) {
 	a.mx.Lock()
-	ok := a.id < 10
+	ok := a.id < 100
 	if ok {
 		a.id++
 	}
@@ -431,11 +431,11 @@ func TestWithSupplier(t *testing.T) {
 	s := &aSupplier{0, sync.Mutex{}}
 	allDone := jt.Run(context.Background(), s)
 	assert.Equal(t, jt.maxRetry, jt.curRetry)
-	assert.Equal(t, s.id, 10)
+	assert.Equal(t, s.id, 100)
 	for _, done := range allDone {
 		v, _ := done.P.(int)
-		assert.Equal(t, true, v <= 10)
-		assert.Equal(t, true, v >= 1)
+		assert.Equal(t, true, v <= 100)
+		assert.Equal(t, true, v > 0)
 		assert.Equal(t, done.P, done.R)
 		assert.Equal(t, nil, done.E)
 	}
