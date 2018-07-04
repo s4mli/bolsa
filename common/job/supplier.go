@@ -1,30 +1,23 @@
 package job
 
-import (
-	"context"
-	"sync"
-)
-
 ////////////////////
 // Data Supplier //
 type dataSupplier struct {
-	data  []interface{}
-	index int
-	mutex sync.Mutex
+	data []interface{}
+	in   <-chan Done
 }
 
-func (ds *dataSupplier) Drain(ctx context.Context) (interface{}, bool) {
-	ds.mutex.Lock()
-	ok := ds.index < len(ds.data)
-	var d interface{} = nil
-	if ok {
-		d = ds.data[ds.index]
-		ds.index++
-	}
-	defer ds.mutex.Unlock()
-	return d, ok
+func (ds *dataSupplier) Adapt() <-chan Done {
+	return ds.in
 }
 
 func NewDataSupplier(data []interface{}) supplier {
-	return &dataSupplier{data, 0, sync.Mutex{}}
+	in := make(chan Done)
+	go func() {
+		for _, d := range data {
+			in <- Done{d, d, nil}
+		}
+		close(in)
+	}()
+	return &dataSupplier{data, in}
 }

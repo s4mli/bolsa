@@ -1,9 +1,9 @@
 package job
 
 import (
-	"context"
-	"runtime"
 	"testing"
+
+	"runtime"
 
 	"github.com/samwooo/bolsa/common"
 	"github.com/stretchr/testify/assert"
@@ -15,16 +15,13 @@ func TestDataSupplierWithinSingleGoroutine(t *testing.T) {
 		data = append(data, k)
 	}
 	ds := NewDataSupplier(data)
+
 	done := make(chan bool)
 	count := 0
 	go func() {
-		for {
-			if d, ok := ds.Drain(context.Background()); ok {
-				assert.Equal(t, true, common.IsIn(d, data))
-				count++
-			} else {
-				break
-			}
+		for d := range ds.Adapt() {
+			count++
+			assert.Equal(t, true, common.IsIn(d.R, data))
 		}
 		done <- true
 	}()
@@ -44,13 +41,9 @@ func TestDataSupplierWithinMultipleGoroutines(t *testing.T) {
 	count := 0
 	for i := 0; i < workers; i++ {
 		go func() {
-			for {
-				if d, ok := ds.Drain(context.Background()); ok {
-					assert.Equal(t, true, common.IsIn(d, data))
-					out <- d
-				} else {
-					break
-				}
+			for d := range ds.Adapt() {
+				assert.Equal(t, true, common.IsIn(d.R, data))
+				out <- d.R
 			}
 			done <- true
 		}()

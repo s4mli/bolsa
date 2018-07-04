@@ -18,7 +18,7 @@ const (
 func (ht *strategyType) String() string {
 	switch *ht {
 	case typeBatch:
-		return "batch"
+		return "reduce"
 	case typeLabor:
 		return "labor"
 	case typeRetry:
@@ -40,17 +40,6 @@ func (je Error) Error() string {
 
 func newError(st strategyType, err error) *Error {
 	return &Error{st, err}
-}
-
-/////////////////
-// Job Result //
-type Done struct {
-	P, R interface{}
-	E    error
-}
-
-func (d *Done) String() string {
-	return fmt.Sprintf(" * Params: %+v\n * Result: ( %+v , %+v )", d.P, d.R, d.E)
 }
 
 /////////////////////
@@ -76,14 +65,13 @@ type retryStrategy interface {
 /////////////////////
 // error strategy //
 type errorStrategy interface {
-	OnError(error)
+	OnError(Done)
 }
 
 ////////////////////////
 // Job data supplier //
 type supplier interface {
-	// Don't care the error really
-	Drain(context.Context) (interface{}, bool)
+	Adapt() <-chan Done
 }
 
 //////////

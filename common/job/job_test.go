@@ -7,8 +7,6 @@ import (
 	"strings"
 	"testing"
 
-	"sync"
-
 	"github.com/samwooo/bolsa/common"
 	"github.com/samwooo/bolsa/common/logging"
 	"github.com/stretchr/testify/assert"
@@ -71,7 +69,7 @@ func (jt *JobTester) Forgo() bool {
 	return jt.curRetry >= jt.maxRetry
 }
 
-func (jt *JobTester) OnError(error) {}
+func (jt *JobTester) OnError(Done) {}
 
 func newJobTester(bs batchStrategy, as laborStrategy) *JobTester {
 	logging.DefaultLogger(fmt.Sprintf(" < %s > ", common.APP_NAME),
@@ -135,7 +133,7 @@ func TestJobBatch1WithErrorNoLabor(t *testing.T) {
 		assert.Equal(t, true, common.IsIn(done.P, with))
 		assert.Equal(t, nil, done.R)
 		assert.Equal(t,
-			fmt.Sprintf("× batch failed ( %+v, test batch1WithError )", []interface{}{done.P}),
+			fmt.Sprintf("× reduce failed ( %+v, test batch1WithError )", []interface{}{done.P}),
 			done.E.Error())
 	}
 }
@@ -151,7 +149,7 @@ func TestJobBatch1WithErrorLaborWithError(t *testing.T) {
 		assert.Equal(t, true, common.IsIn(done.P, with))
 		assert.Equal(t, nil, done.R)
 		assert.Equal(t,
-			fmt.Sprintf("× batch failed ( %+v, test batch1WithError )", []interface{}{done.P}),
+			fmt.Sprintf("× reduce failed ( %+v, test batch1WithError )", []interface{}{done.P}),
 			done.E.Error())
 	}
 }
@@ -167,7 +165,7 @@ func TestJobBatch1WithErrorLaborWithoutError(t *testing.T) {
 		assert.Equal(t, true, common.IsIn(done.P, with))
 		assert.Equal(t, nil, done.R)
 		assert.Equal(t,
-			fmt.Sprintf("× batch failed ( %+v, test batch1WithError )", []interface{}{done.P}),
+			fmt.Sprintf("× reduce failed ( %+v, test batch1WithError )", []interface{}{done.P}),
 			done.E.Error())
 	}
 }
@@ -226,7 +224,7 @@ func TestJobBatchNWithErrorNoLabor(t *testing.T) {
 	for _, done := range allDone {
 		assert.Equal(t, true, common.IsIn(done.P, with))
 		assert.Equal(t, nil, done.R)
-		assert.Equal(t, true, strings.Contains(done.E.Error(), "× batch failed ( ["))
+		assert.Equal(t, true, strings.Contains(done.E.Error(), "× reduce failed ( ["))
 		assert.Equal(t, true, strings.Contains(done.E.Error(), fmt.Sprintf("%+v", done.P)))
 		assert.Equal(t, true, strings.Contains(done.E.Error(), "], test batch3WithError )"))
 	}
@@ -242,7 +240,7 @@ func TestJobBatchNWithErrorLaborWithError(t *testing.T) {
 	for _, done := range allDone {
 		assert.Equal(t, true, common.IsIn(done.P, with))
 		assert.Equal(t, nil, done.R)
-		assert.Equal(t, true, strings.Contains(done.E.Error(), "× batch failed ( ["))
+		assert.Equal(t, true, strings.Contains(done.E.Error(), "× reduce failed ( ["))
 		assert.Equal(t, true, strings.Contains(done.E.Error(), fmt.Sprintf("%+v", done.P)))
 		assert.Equal(t, true, strings.Contains(done.E.Error(), "], test batch3WithError )"))
 	}
@@ -258,7 +256,7 @@ func TestJobBatchNWithErrorLaborWithoutError(t *testing.T) {
 	for _, done := range allDone {
 		assert.Equal(t, true, common.IsIn(done.P, with))
 		assert.Equal(t, nil, done.R)
-		assert.Equal(t, true, strings.Contains(done.E.Error(), "× batch failed ( ["))
+		assert.Equal(t, true, strings.Contains(done.E.Error(), "× reduce failed ( ["))
 		assert.Equal(t, true, strings.Contains(done.E.Error(), fmt.Sprintf("%+v", done.P)))
 		assert.Equal(t, true, strings.Contains(done.E.Error(), "], test batch3WithError )"))
 	}
@@ -407,36 +405,6 @@ func TestBlindlyRetryJobWithNil(t *testing.T) {
 	for _, done := range allDone {
 		assert.Equal(t, true, common.IsIn(done.P, with))
 		assert.Equal(t, nil, done.R)
-		assert.Equal(t, nil, done.E)
-	}
-}
-
-type aSupplier struct {
-	id int
-	mx sync.Mutex
-}
-
-func (a *aSupplier) Drain(ctx context.Context) (interface{}, bool) {
-	a.mx.Lock()
-	ok := a.id < 100
-	if ok {
-		a.id++
-	}
-	defer a.mx.Unlock()
-	return a.id, ok
-}
-
-func TestWithSupplier(t *testing.T) {
-	jt := newJobTester(&batchNWithoutError{3}, &laborWithoutError{})
-	s := &aSupplier{0, sync.Mutex{}}
-	allDone := jt.Run(context.Background(), s)
-	assert.Equal(t, jt.maxRetry, jt.curRetry)
-	assert.Equal(t, s.id, 100)
-	for _, done := range allDone {
-		v, _ := done.P.(int)
-		assert.Equal(t, true, v <= 100)
-		assert.Equal(t, true, v > 0)
-		assert.Equal(t, done.P, done.R)
 		assert.Equal(t, nil, done.E)
 	}
 }
