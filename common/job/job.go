@@ -8,53 +8,48 @@ import (
 	"github.com/samwooo/bolsa/common/logging"
 )
 
+func (j *Job) batchSize() int {
+	if j.batchStrategy == nil || j.batchStrategy.Size() <= 1 {
+		return 1
+	} else {
+		return j.batchStrategy.Size()
+	}
+}
+
 func (j *Job) drain(ctx context.Context, s supplier) <-chan Done {
-	return NewTask(j.Logger, "drain", j.workers,
-		func() int {
-			if j.batchStrategy == nil {
-				return 1
-			} else {
-				return j.batchStrategy.Size()
-			}
-		}(),
+	return NewTask(j.Logger, "drain",
 		func(ctx context.Context, d Done) Done {
 			j.Logger.Debugf("√ drain succeed ( %+v )", d)
 			return Done{nil, d.P, nil}
-		}).Run(ctx, s.Adapt())
+		}).Run(ctx, j.workers, j.batchSize(), s.Adapt())
 }
 
 func (j *Job) feed(ctx context.Context, input <-chan Done) <-chan Done {
 
 	type reducer func(context.Context, []interface{}) (interface{}, error)
 
-	batchSize := func() int {
-		if j.batchStrategy == nil {
-			return 1
-		} else {
-			return j.batchStrategy.Size()
-		}
-	}()
-
 	feedWithReduce := func(workers int, input <-chan Done, reduce reducer) <-chan Done {
-		return NewTask(j.Logger, "reduce", workers, 1,
+		return NewTask(j.Logger, "reduce",
 			func(ctx context.Context, d Done) Done {
 				var batchedData []interface{}
-				if batchSize <= 1 {
+				if j.batchSize() <= 1 {
+					// task won't batch if batch size is 1
 					batchedData = append(batchedData, d.P)
 				} else {
+					// definitely d.P is an array
 					batchedData, _ = d.P.([]interface{})
 				}
 				if data, err := reduce(ctx, batchedData); err != nil {
 					j.Logger.Errorf("× reduce failed ( %+v, %s )", batchedData, err.Error())
 					return Done{
 						batchedData,
-						nil,
+						batchedData,
 						newError(typeBatch, fmt.Errorf("( %+v, %s )", batchedData, err.Error()))}
 				} else {
 					j.Logger.Debugf("√ reduce succeed ( %+v, %+v )", batchedData, data)
 					return Done{batchedData, data, nil}
 				}
-			}).Run(ctx, input)
+			}).Run(ctx, workers, 1, input)
 	}
 
 	if j.batchStrategy != nil {
@@ -74,7 +69,7 @@ func (j *Job) chew(ctx context.Context, input <-chan Done) <-chan Done {
 	type worker func(ctx context.Context, p interface{}) (r interface{}, e error)
 
 	chewWithLabor := func(workers int, input <-chan Done, work worker) <-chan Done {
-		return NewTask(j.Logger, "labor", workers, 1,
+		return NewTask(j.Logger, "labor",
 			func(ctx context.Context, d Done) Done {
 				if d.E != nil {
 					j.Logger.Debugf("√ labor skipped, pipe batch failure ( %s )", d.E.Error())
@@ -91,7 +86,7 @@ func (j *Job) chew(ctx context.Context, input <-chan Done) <-chan Done {
 						return Done{d.P, data, nil}
 					}
 				}
-			}).Run(ctx, input)
+			}).Run(ctx, workers, 1, input)
 	}
 
 	if j.laborStrategy != nil {
@@ -219,10 +214,7 @@ func (j *Job) ErrorStrategy(eh errorStrategy) *Job {
 }
 
 func (j *Job) Run(ctx context.Context, s supplier) []Done {
-	child, cancelFn := context.WithCancel(ctx)
-	defer cancelFn()
-
-	allDone := j.runWithSupplier(child, s)
+	allDone := j.runWithSupplier(ctx, s)
 	if j.retryStrategy == nil {
 		j.Logger.Debug("❋ retry ×")
 	} else {

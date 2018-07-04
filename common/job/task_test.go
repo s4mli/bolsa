@@ -17,10 +17,10 @@ func TestTaskWithSingleWorkerWithoutBatch(t *testing.T) {
 		logging.LogLevelFromString("INFO"), 100)
 
 	with := []interface{}{1, 2, 3, 4, 5, 6, 7, 8, 9}
-	output := NewTask(logging.GetLogger(" task test "), "TestTaskWithoutBatch", 1, 1,
+	output := NewTask(logging.GetLogger(" task test "), "TestTaskWithoutBatch",
 		func(ctx context.Context, d Done) Done {
 			return Done{nil, d.P, nil}
-		}).Run(context.Background(), NewDataSupplier(with).Adapt())
+		}).Run(context.Background(), 1, 1, NewDataSupplier(with).Adapt())
 
 	for d := range output {
 		assert.Equal(t, true, common.IsIn(d.R, with))
@@ -33,10 +33,9 @@ func TestTaskWithNWorkersWithoutBatch(t *testing.T) {
 
 	with := []interface{}{1, 2, 3, 4, 5, 6, 7, 8, 9}
 	output := NewTask(logging.GetLogger(" task test "), "TestTaskWithoutBatch",
-		runtime.NumCPU(), 1,
 		func(ctx context.Context, d Done) Done {
 			return Done{nil, d.P, nil}
-		}).Run(context.Background(), NewDataSupplier(with).Adapt())
+		}).Run(context.Background(), runtime.NumCPU(), 1, NewDataSupplier(with).Adapt())
 
 	for d := range output {
 		assert.Equal(t, true, common.IsIn(d.R, with))
@@ -48,10 +47,10 @@ func TestTaskWithSingleWorkerWithBatch(t *testing.T) {
 		logging.LogLevelFromString("INFO"), 100)
 
 	with := []interface{}{1, 2, 3, 4, 5, 6, 7, 8, 9}
-	output := NewTask(logging.GetLogger(" task test "), "TestTaskWithoutBatch", 1, 2,
+	output := NewTask(logging.GetLogger(" task test "), "TestTaskWithoutBatch",
 		func(ctx context.Context, d Done) Done {
 			return Done{nil, d.P, nil}
-		}).Run(context.Background(), NewDataSupplier(with).Adapt())
+		}).Run(context.Background(), 1, 2, NewDataSupplier(with).Adapt())
 
 	for d := range output {
 		rs, ok := d.R.([]interface{})
@@ -68,10 +67,9 @@ func TestTaskWithNWorkersWithBatch(t *testing.T) {
 
 	with := []interface{}{1, 2, 3, 4, 5, 6, 7, 8, 9}
 	output := NewTask(logging.GetLogger(" task test "), "TestTaskWithoutBatch",
-		runtime.NumCPU(), 3,
 		func(ctx context.Context, d Done) Done {
 			return Done{nil, d.P, nil}
-		}).Run(context.Background(), NewDataSupplier(with).Adapt())
+		}).Run(context.Background(), runtime.NumCPU(), 3, NewDataSupplier(with).Adapt())
 
 	for d := range output {
 		rs, ok := d.R.([]interface{})

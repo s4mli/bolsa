@@ -84,6 +84,7 @@ func newJobTester(bs batchStrategy, as laborStrategy) *JobTester {
 func TestJobWithNoBatchNoLabor(t *testing.T) {
 	jt := newJobTester(nil, nil)
 	with := []interface{}{1, 2, 3}
+	assert.Equal(t, 1, jt.batchSize())
 	allDone := jt.Run(context.Background(), NewDataSupplier(with))
 	assert.Equal(t, len(with), len(allDone))
 	assert.Equal(t, jt.maxRetry, jt.curRetry)
@@ -98,6 +99,7 @@ func TestJobWithNoBatchNoLabor(t *testing.T) {
 func TestJobWithNoBatchButLaborError(t *testing.T) {
 	jt := newJobTester(nil, &laborWithError{})
 	with := []interface{}{1, 2, 3}
+	assert.Equal(t, 1, jt.batchSize())
 	allDone := jt.Run(context.Background(), NewDataSupplier(with))
 	assert.Equal(t, len(with), len(allDone))
 	assert.Equal(t, jt.maxRetry, jt.curRetry)
@@ -112,6 +114,7 @@ func TestJobWithNoBatchButLaborError(t *testing.T) {
 func TestJobWithNoBatchButLabor(t *testing.T) {
 	jt := newJobTester(nil, &laborWithoutError{})
 	with := []interface{}{1, 2, 3}
+	assert.Equal(t, 1, jt.batchSize())
 	allDone := jt.Run(context.Background(), NewDataSupplier(with))
 	assert.Equal(t, len(with), len(allDone))
 	assert.Equal(t, jt.maxRetry, jt.curRetry)
@@ -126,6 +129,7 @@ func TestJobWithNoBatchButLabor(t *testing.T) {
 func TestJobBatch1WithErrorNoLabor(t *testing.T) {
 	jt := newJobTester(&batch1WithError{}, nil)
 	with := []interface{}{1, 2, 3}
+	assert.Equal(t, 1, jt.batchSize())
 	allDone := jt.Run(context.Background(), NewDataSupplier(with))
 	assert.Equal(t, len(with), len(allDone))
 	assert.Equal(t, jt.maxRetry, jt.curRetry)
@@ -142,6 +146,7 @@ func TestJobBatch1WithErrorNoLabor(t *testing.T) {
 func TestJobBatch1WithErrorLaborWithError(t *testing.T) {
 	jt := newJobTester(&batch1WithError{}, &laborWithError{})
 	with := []interface{}{1, 2, 3}
+	assert.Equal(t, 1, jt.batchSize())
 	allDone := jt.Run(context.Background(), NewDataSupplier(with))
 	assert.Equal(t, len(with), len(allDone))
 	assert.Equal(t, jt.maxRetry, jt.curRetry)
@@ -158,6 +163,7 @@ func TestJobBatch1WithErrorLaborWithError(t *testing.T) {
 func TestJobBatch1WithErrorLaborWithoutError(t *testing.T) {
 	jt := newJobTester(&batch1WithError{}, &laborWithoutError{})
 	with := []interface{}{1, 2, 3}
+	assert.Equal(t, 1, jt.batchSize())
 	allDone := jt.Run(context.Background(), NewDataSupplier(with))
 	assert.Equal(t, len(with), len(allDone))
 	assert.Equal(t, jt.maxRetry, jt.curRetry)
@@ -174,6 +180,7 @@ func TestJobBatch1WithErrorLaborWithoutError(t *testing.T) {
 func TestJobBatch1WithoutErrorNoLabor(t *testing.T) {
 	jt := newJobTester(&batch1WithoutError{}, nil)
 	with := []interface{}{1, 2, 3}
+	assert.Equal(t, 1, jt.batchSize())
 	allDone := jt.Run(context.Background(), NewDataSupplier(with))
 	assert.Equal(t, len(with), len(allDone))
 	assert.Equal(t, jt.maxRetry, jt.curRetry)
@@ -188,6 +195,7 @@ func TestJobBatch1WithoutErrorNoLabor(t *testing.T) {
 func TestJobBatch1WithoutErrorLaborWithError(t *testing.T) {
 	jt := newJobTester(&batch1WithoutError{}, &laborWithError{})
 	with := []interface{}{1, 2, 3}
+	assert.Equal(t, 1, jt.batchSize())
 	allDone := jt.Run(context.Background(), NewDataSupplier(with))
 	assert.Equal(t, len(with), len(allDone))
 	assert.Equal(t, jt.maxRetry, jt.curRetry)
@@ -204,6 +212,7 @@ func TestJobBatch1WithoutErrorLaborWithError(t *testing.T) {
 func TestJobBatch1WithoutErrorLaborWithoutError(t *testing.T) {
 	jt := newJobTester(&batch1WithoutError{}, &laborWithoutError{})
 	with := []interface{}{1, 2, 3}
+	assert.Equal(t, 1, jt.batchSize())
 	allDone := jt.Run(context.Background(), NewDataSupplier(with))
 	assert.Equal(t, len(with), len(allDone))
 	assert.Equal(t, jt.maxRetry, jt.curRetry)
@@ -218,6 +227,7 @@ func TestJobBatch1WithoutErrorLaborWithoutError(t *testing.T) {
 func TestJobBatchNWithErrorNoLabor(t *testing.T) {
 	jt := newJobTester(&batchNWithError{3}, nil)
 	with := []interface{}{1, 2, 3, 4, 5, 6, 7, 8}
+	assert.Equal(t, 3, jt.batchSize())
 	allDone := jt.Run(context.Background(), NewDataSupplier(with))
 	assert.Equal(t, len(with), len(allDone))
 	assert.Equal(t, jt.maxRetry, jt.curRetry)
@@ -234,6 +244,7 @@ func TestJobBatchNWithErrorNoLabor(t *testing.T) {
 func TestJobBatchNWithErrorLaborWithError(t *testing.T) {
 	jt := newJobTester(&batchNWithError{3}, &laborWithError{})
 	with := []interface{}{1, 2, 3, 4, 5, 6, 7, 8}
+	assert.Equal(t, 3, jt.batchSize())
 	allDone := jt.Run(context.Background(), NewDataSupplier(with))
 	assert.Equal(t, len(with), len(allDone))
 	assert.Equal(t, jt.maxRetry, jt.curRetry)
@@ -250,6 +261,7 @@ func TestJobBatchNWithErrorLaborWithError(t *testing.T) {
 func TestJobBatchNWithErrorLaborWithoutError(t *testing.T) {
 	jt := newJobTester(&batchNWithError{3}, &laborWithoutError{})
 	with := []interface{}{1, 2, 3, 4, 5, 6, 7, 8}
+	assert.Equal(t, 3, jt.batchSize())
 	allDone := jt.Run(context.Background(), NewDataSupplier(with))
 	assert.Equal(t, len(with), len(allDone))
 	assert.Equal(t, jt.maxRetry, jt.curRetry)
@@ -266,6 +278,7 @@ func TestJobBatchNWithErrorLaborWithoutError(t *testing.T) {
 func TestJobBatchNWithoutErrorNoLabor(t *testing.T) {
 	jt := newJobTester(&batchNWithoutError{3}, nil)
 	with := []interface{}{1, 2, 3, 4, 5, 6, 7, 8}
+	assert.Equal(t, 3, jt.batchSize())
 	allDone := jt.Run(context.Background(), NewDataSupplier(with))
 	assert.Equal(t, jt.maxRetry, jt.curRetry)
 	for _, done := range allDone {
@@ -279,6 +292,7 @@ func TestJobBatchNWithoutErrorNoLabor(t *testing.T) {
 func TestJobBatchNWithoutErrorLaborWithError(t *testing.T) {
 	jt := newJobTester(&batchNWithoutError{3}, &laborWithError{})
 	with := []interface{}{1, 2, 3, 4, 5, 6, 7, 8}
+	assert.Equal(t, 3, jt.batchSize())
 	allDone := jt.Run(context.Background(), NewDataSupplier(with))
 	assert.Equal(t, jt.maxRetry, jt.curRetry)
 	for _, done := range allDone {
@@ -292,6 +306,7 @@ func TestJobBatchNWithoutErrorLaborWithError(t *testing.T) {
 func TestJobBatchNWithoutErrorLaborWithoutError(t *testing.T) {
 	jt := newJobTester(&batchNWithoutError{3}, &laborWithoutError{})
 	with := []interface{}{1, 2, 3, 4, 5, 6, 7, 8}
+	assert.Equal(t, 3, jt.batchSize())
 	allDone := jt.Run(context.Background(), NewDataSupplier(with))
 	assert.Equal(t, jt.maxRetry, jt.curRetry)
 	for _, done := range allDone {
@@ -319,6 +334,7 @@ func TestJobItself(t *testing.T) {
 	jt := &JobTester{NewJob(logging.GetLogger(WHAT), runtime.NumCPU()), 3, 0}
 	jt.BatchStrategy(jt).LaborStrategy(jt).RetryStrategy(jt).ErrorStrategy(jt)
 	with := []interface{}{1, 2, 3, 4, 5, 6, 7, 8}
+	assert.Equal(t, jt.maxRetry, jt.batchSize())
 	allDone := jt.Run(context.Background(), NewDataSupplier(with))
 	assert.Equal(t, jt.maxRetry, jt.curRetry)
 	for _, done := range allDone {
@@ -348,6 +364,7 @@ func TestJobItselfWithoutRetry(t *testing.T) {
 	jt := &JobTester{NewJob(logging.GetLogger(WHAT), runtime.NumCPU()), 3, 0}
 	jt.BatchStrategy(jt).LaborStrategy(jt).RetryStrategy(&retryHook{}).ErrorStrategy(jt)
 	with := []interface{}{1, 2, 3, 4, 5, 6, 7, 8}
+	assert.Equal(t, jt.maxRetry, jt.batchSize())
 	allDone := jt.Run(context.Background(), NewDataSupplier(with))
 	assert.Equal(t, 0, jt.curRetry)
 	for _, done := range allDone {
@@ -384,6 +401,7 @@ func (bj *blindlyRetryJob) Work(ctx context.Context, p interface{}) (r interface
 func TestBlindlyRetryJob(t *testing.T) {
 	brj := &blindlyRetryJob{NewJob(logging.GetLogger(WHAT), runtime.NumCPU()), 3, 0}
 	brj.LaborStrategy(brj).RetryStrategy(brj)
+	assert.Equal(t, 1, brj.batchSize())
 	with := []interface{}{"blindly retry job"}
 	allDone := brj.Run(context.Background(), NewDataSupplier(with))
 	assert.Equal(t, brj.maxRetry, brj.curRetry)
@@ -398,6 +416,7 @@ func TestBlindlyRetryJob(t *testing.T) {
 func TestBlindlyRetryJobWithNil(t *testing.T) {
 	brj := &blindlyRetryJob{NewJob(logging.GetLogger(WHAT), runtime.NumCPU()), 5, 0}
 	brj.LaborStrategy(brj).RetryStrategy(brj)
+	assert.Equal(t, 1, brj.batchSize())
 	with := []interface{}{nil}
 	allDone := brj.Run(context.Background(), NewDataSupplier(with))
 	assert.Equal(t, brj.maxRetry, brj.curRetry)

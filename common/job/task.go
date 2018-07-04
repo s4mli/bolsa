@@ -20,14 +20,12 @@ func (d *Done) String() string {
 // Task //
 type task func(ctx context.Context, d Done) Done
 type Task struct {
-	logger  logging.Logger
-	name    string
-	workers int
-	batch   int
-	task    task
+	logger logging.Logger
+	name   string
+	task   task
 }
 
-func (t *Task) Run(ctx context.Context, input <-chan Done) <-chan Done {
+func (t *Task) Run(ctx context.Context, workers, inputBatch int, input <-chan Done) <-chan Done {
 	waitAndExitGracefully := func(workers int, ch chan<- Done, waitress <-chan bool) {
 		go func() {
 			for i := 0; i < workers; i++ {
@@ -37,9 +35,9 @@ func (t *Task) Run(ctx context.Context, input <-chan Done) <-chan Done {
 		}()
 	}
 
-	runTask := func(workers, batch int, input <-chan Done, output chan<- Done) <-chan bool {
+	runTask := func(workers, inputBatch int, input <-chan Done, output chan<- Done) <-chan bool {
 
-		runWithBatch := func(batch int, input <-chan Done, output chan<- Done) {
+		runWithBatch := func(inputBatch int, input <-chan Done, output chan<- Done) {
 
 			fillWithBatch := func(batched []Done, output chan<- Done) {
 				var rs []interface{}
@@ -71,7 +69,7 @@ func (t *Task) Run(ctx context.Context, input <-chan Done) <-chan Done {
 						batched = []Done{}
 					} else {
 						batched = append(batched, d)
-						if len(batched) == batch {
+						if len(batched) == inputBatch {
 							fillWithBatch(batched, output)
 							batched = []Done{}
 						}
@@ -105,11 +103,11 @@ func (t *Task) Run(ctx context.Context, input <-chan Done) <-chan Done {
 			}
 		}
 
-		waitress := make(chan bool, t.workers)
-		for i := 0; i < t.workers; i++ {
+		waitress := make(chan bool, workers)
+		for i := 0; i < workers; i++ {
 			go func() {
-				if batch > 1 {
-					runWithBatch(batch, input, output)
+				if inputBatch > 1 {
+					runWithBatch(inputBatch, input, output)
 				} else {
 					runWithoutBatch(input, output)
 				}
@@ -119,12 +117,12 @@ func (t *Task) Run(ctx context.Context, input <-chan Done) <-chan Done {
 		return waitress
 	}
 
-	t.logger.Debugf("❋ kickoff %s task ( workers %d, batch %d )", t.name, t.workers, t.batch)
-	output := make(chan Done, t.workers)
-	waitAndExitGracefully(t.workers, output, runTask(t.workers, t.batch, input, output))
+	t.logger.Debugf("❋ kickoff %s task ( workers %d, batch %d )", t.name, workers, inputBatch)
+	output := make(chan Done, workers)
+	waitAndExitGracefully(workers, output, runTask(workers, inputBatch, input, output))
 	return output
 }
 
-func NewTask(logger logging.Logger, name string, workers, batch int, task task) *Task {
-	return &Task{logger, name, workers, batch, task}
+func NewTask(logger logging.Logger, name string, task task) *Task {
+	return &Task{logger, name, task}
 }
