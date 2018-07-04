@@ -92,7 +92,7 @@ func (pj *pushJob) Forgo() bool {
 	return ended
 }
 
-func (pj *pushJob) OnError(error) {}
+func (pj *pushJob) OnError(job.Done) {}
 
 ////////////////////////
 // Queue is a Broker //
