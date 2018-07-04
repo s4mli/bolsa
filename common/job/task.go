@@ -80,7 +80,6 @@ func (t *Task) Run(ctx context.Context, workers, inputBatch int, input <-chan Do
 			}
 			if len(batched) > 0 {
 				fillWithBatch(batched, output)
-				batched = []Done{}
 			}
 		}
 
