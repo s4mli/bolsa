@@ -15,7 +15,7 @@ func NewDataSupplier(data []interface{}) supplier {
 	in := make(chan Done)
 	go func() {
 		for _, d := range data {
-			in <- Done{d, d, nil}
+			in <- newDone(nil, d, nil, nil)
 		}
 		close(in)
 	}()

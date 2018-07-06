@@ -20,7 +20,7 @@ func (j *Job) drain(ctx context.Context, s supplier) <-chan Done {
 	return NewTask(j.Logger, "drain",
 		func(ctx context.Context, d Done) Done {
 			j.Logger.Debugf("√ drain succeed ( %+v )", d)
-			return Done{nil, d.P, nil}
+			return newDone(nil, d.P, nil, d.X)
 		}).Run(ctx, j.workers, j.batchSize(), s.Adapt())
 }
 
@@ -32,22 +32,24 @@ func (j *Job) feed(ctx context.Context, input <-chan Done) <-chan Done {
 		return NewTask(j.Logger, "reduce",
 			func(ctx context.Context, d Done) Done {
 				var batchedData []interface{}
+				var batchedX []interface{}
 				if j.batchSize() <= 1 {
 					// task won't batch if batch size is 1
 					batchedData = append(batchedData, d.P)
+					batchedX = append(batchedX, d.X)
 				} else {
 					// definitely d.P is an array
 					batchedData, _ = d.P.([]interface{})
+					batchedX, _ = d.X.([]interface{})
 				}
 				if data, err := reduce(ctx, batchedData); err != nil {
 					j.Logger.Errorf("× reduce failed ( %+v, %s )", batchedData, err.Error())
-					return Done{
-						batchedData,
-						batchedData,
-						newError(typeBatch, fmt.Errorf("( %+v, %s )", batchedData, err.Error()))}
+					return newDone(batchedData, batchedData,
+						newError(typeBatch, fmt.Errorf("( %+v, %s )", batchedData, err.Error())),
+						batchedX)
 				} else {
 					j.Logger.Debugf("√ reduce succeed ( %+v, %+v )", batchedData, data)
-					return Done{batchedData, data, nil}
+					return newDone(batchedData, data, nil, batchedX)
 				}
 			}).Run(ctx, workers, 1, input)
 	}
@@ -77,13 +79,12 @@ func (j *Job) chew(ctx context.Context, input <-chan Done) <-chan Done {
 				} else {
 					if data, err := work(ctx, d.P); err != nil {
 						j.Logger.Errorf("× labor failed ( %+v, %s )", d.P, err.Error())
-						return Done{
-							d.P,
-							data,
-							newError(typeLabor, fmt.Errorf("( %+v, %s )", d.P, err.Error()))}
+						return newDone(d.P, data,
+							newError(typeLabor, fmt.Errorf("( %+v, %s )", d.P, err.Error())),
+							d.X)
 					} else {
 						j.Logger.Debugf("√ labor succeed ( %+v, %+v)", d.P, data)
-						return Done{d.P, data, nil}
+						return newDone(d.P, data, nil, d.X)
 					}
 				}
 			}).Run(ctx, workers, 1, input)
@@ -145,8 +146,9 @@ func (j *Job) retry(ctx context.Context, allDone []Done) []Done {
 					case typeBatch:
 						if groupedPara, isArray := done.P.([]interface{}); isArray {
 							batchRetries = append(batchRetries, groupedPara...)
+							groupedX, _ := done.X.([]interface{})
 							for _, para := range groupedPara {
-								batchFailed = append(batchFailed, Done{para, nil, done.E})
+								batchFailed = append(batchFailed, newDone(para, nil, done.E, groupedX))
 							}
 						} else {
 							j.Logger.Errorf("× cast ( %+v ) failed, skip retry", done.P)

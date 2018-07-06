@@ -2,19 +2,9 @@ package job
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/samwooo/bolsa/common/logging"
 )
-
-type Done struct {
-	P, R interface{}
-	E    error
-}
-
-func (d *Done) String() string {
-	return fmt.Sprintf(" * Params: %+v\n * Result: ( %+v , %+v )", d.P, d.R, d.E)
-}
 
 ///////////
 // Task //
@@ -41,15 +31,17 @@ func (t *Task) Run(ctx context.Context, workers, inputBatch int, input <-chan Do
 
 			fillWithBatch := func(batched []Done, output chan<- Done) {
 				var rs []interface{}
+				var xs []interface{}
 				for _, b := range batched {
 					if b.R != nil && b.E == nil {
 						// last R as a P
 						rs = append(rs, b.R)
+						xs = append(xs, b.X)
 					}
 				}
 
 				if len(rs) > 0 {
-					r := t.task(ctx, Done{rs, nil, nil})
+					r := t.task(ctx, newDone(rs, nil, nil, xs))
 					t.logger.Debugf("√ %s task done ( %+v )", t.name, r)
 					output <- r
 				} else {
@@ -91,7 +83,7 @@ func (t *Task) Run(ctx context.Context, workers, inputBatch int, input <-chan Do
 					output <- d
 				} else {
 					// last R as a P
-					r := t.task(ctx, Done{d.R, nil, nil})
+					r := t.task(ctx, newDone(d.R, nil, nil, d.X))
 					t.logger.Debugf("√ %s task done ( %+v )", t.name, r)
 					output <- r
 				}

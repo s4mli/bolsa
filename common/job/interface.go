@@ -42,6 +42,23 @@ func newError(st strategyType, err error) *Error {
 	return &Error{st, err}
 }
 
+////////////////////////
+// Task & Job Result //
+type Done struct {
+	P interface{} // parameter
+	R interface{} // result
+	E error       // error
+	X interface{} // anything as u wish, normally is nil
+}
+
+func (d *Done) String() string {
+	return fmt.Sprintf("\n * P: %+v\n * X: %+v\n * R , E: ( %+v , %+v )\n", d.P, d.X, d.R, d.E)
+}
+
+func newDone(para interface{}, result interface{}, err error, extra interface{}) Done {
+	return Done{para, result, err, extra}
+}
+
 /////////////////////
 // batch strategy //
 type batchStrategy interface {
