@@ -2,6 +2,7 @@ package job
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/samwooo/bolsa/common/logging"
 )
@@ -31,22 +32,20 @@ func (t *Task) Run(ctx context.Context, workers, inputBatch int, input <-chan Do
 
 			fillWithBatch := func(batched []Done, output chan<- Done) {
 				var rs []interface{}
-				var xs []interface{}
 				for _, b := range batched {
 					if b.R != nil && b.E == nil {
 						// last R as a P
 						rs = append(rs, b.R)
-						xs = append(xs, b.X)
 					}
 				}
 
 				if len(rs) > 0 {
-					r := t.task(ctx, newDone(rs, nil, nil, xs))
-					t.logger.Debugf("√ %s task done ( %+v )", t.name, r)
+					r := t.task(ctx, newDone(rs, nil, nil))
+					t.logger.Debugf("✔ %s task done ( %+v )", t.name, r)
 					output <- r
 				} else {
 					// error
-					t.logger.Debugf("√ %s task skipped ( %+v )", t.name, batched[0])
+					t.logger.Debugf("✔ %s task skipped ( %+v )", t.name, batched[0])
 					output <- batched[0]
 				}
 			}
@@ -55,7 +54,7 @@ func (t *Task) Run(ctx context.Context, workers, inputBatch int, input <-chan Do
 			for {
 				if d, more := <-input; more {
 					if d.E != nil || d.R == nil {
-						t.logger.Debugf("√ %s task skipped ( %+v )", t.name, d)
+						t.logger.Debugf("✔ %s task skipped ( %+v )", t.name, d)
 						batched = append(batched, d)
 						fillWithBatch(batched, output)
 						batched = []Done{}
@@ -79,12 +78,11 @@ func (t *Task) Run(ctx context.Context, workers, inputBatch int, input <-chan Do
 
 			fillWithoutBatch := func(d Done, output chan<- Done) {
 				if d.E != nil || d.R == nil {
-					t.logger.Debugf("√ %s task skipped ( %+v )", t.name, d)
+					t.logger.Debugf("✔ %s task skipped ( %+v )", t.name, d)
 					output <- d
 				} else {
-					// last R as a P
-					r := t.task(ctx, newDone(d.R, nil, nil, d.X))
-					t.logger.Debugf("√ %s task done ( %+v )", t.name, r)
+					r := t.task(ctx, newDone(d.R, nil, nil))
+					t.logger.Debugf("✔ %s task done ( %+v )", t.name, r)
 					output <- r
 				}
 			}
@@ -108,7 +106,9 @@ func (t *Task) Run(ctx context.Context, workers, inputBatch int, input <-chan Do
 		return waitress
 	}
 
-	t.logger.Debugf("❋ kickoff %s task ( workers %d, batch %d )", t.name, workers, inputBatch)
+	t.logger.Debug(fmt.Sprintf("\n   ⬨ Task - %s\n"+
+		"      ⬨ Workers    %d\n"+
+		"      ⬨ Batch      %d\n", t.name, workers, inputBatch))
 	output := make(chan Done, workers)
 	waitAndExitGracefully(workers, output, runTask(workers, inputBatch, input, output))
 	return output

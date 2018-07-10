@@ -19,11 +19,10 @@ var mapIte = func(k interface{}) (interface{}, error) {
 }
 
 func testMapWithError(t *testing.T) {
-	logging.DefaultLogger(fmt.Sprintf(" < %s > ", common.APP_NAME),
-		logging.LogLevelFromString("DEBUG"), 100)
+	logging.DefaultLogger("", logging.LogLevelFromString("INFO"), 100)
 
 	input := []interface{}{1, 2, 3, 4, 5, 6, 7, 8, "abc"}
-	r := Map(context.Background(), logging.GetLogger("map test "), input, mapIte)
+	r := Map(context.Background(), logging.GetLogger("test "), input, mapIte)
 	assert.Equal(t, len(input)-1, len(r))
 	for _, v := range input {
 		if vi, ok := v.(int); ok {
@@ -33,11 +32,10 @@ func testMapWithError(t *testing.T) {
 }
 
 func testMapWithoutError(t *testing.T) {
-	logging.DefaultLogger(fmt.Sprintf(" < %s > ", common.APP_NAME),
-		logging.LogLevelFromString("DEBUG"), 100)
+	logging.DefaultLogger("", logging.LogLevelFromString("INFO"), 100)
 
 	input := []interface{}{1, 2, 3, 4, 5, 6, 7, 8}
-	r := Map(context.Background(), logging.GetLogger("map test "), input, mapIte)
+	r := Map(context.Background(), logging.GetLogger("test "), input, mapIte)
 	assert.Equal(t, len(input), len(r))
 	for _, v := range input {
 		vi, _ := v.(int)

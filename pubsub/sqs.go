@@ -57,7 +57,6 @@ func (m *SQSMessage) Parse() ([]interface{}, error) {
 type pushJob struct {
 	*job.Job
 	q        *SQSQueue
-	curRetry int
 	maxRetry int
 }
 
@@ -86,13 +85,8 @@ func (pj *pushJob) Work(ctx context.Context, p interface{}) (r interface{}, e er
 }
 
 func (pj *pushJob) Worth(done job.Done) bool { return done.E != nil }
-func (pj *pushJob) Forgo() bool {
-	ended := pj.curRetry >= pj.maxRetry
-	pj.curRetry++
-	return ended
-}
-
-func (pj *pushJob) OnError(job.Done) {}
+func (pj *pushJob) Limit() int               { return pj.maxRetry }
+func (pj *pushJob) OnError(job.Done)         {}
 
 ////////////////////////
 // Queue is a Broker //
@@ -153,7 +147,7 @@ func (q *SQSQueue) Push(ctx context.Context, body []interface{}) ([]EventId, err
 		return messageIds, common.ErrorFromString(strings.Join(errors, " | "))
 	}
 
-	pj := &pushJob{job.NewJob(q.logger, 0), q, 0, 3}
+	pj := &pushJob{job.NewJob(q.logger, "SqsSendJob", 0), q, 3}
 	return handleResults(pj.BatchStrategy(pj).LaborStrategy(pj).RetryStrategy(
 		pj).ErrorStrategy(pj).Run(ctx, job.NewDataSupplier(body)))
 }
@@ -317,7 +311,7 @@ func NewSQS(region, url string, wait, delay int64, batch int) *SQSQueue {
 			wait:   wait,
 			delay:  delay,
 			batch:  batch,
-			logger: logging.GetLogger(" < sqs > "),
+			logger: logging.GetLogger("sqs "),
 		}
 	} else {
 		return nil

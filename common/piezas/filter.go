@@ -25,7 +25,7 @@ func Filter(ctx context.Context, logger logging.Logger, data []interface{},
 	iterator func(interface{}) (bool, error)) []interface{} {
 
 	start := time.Now()
-	f := &filterJ{job.NewJob(logger, 0), iterator}
+	f := &filterJ{job.NewJob(logger, "Filter", 0), iterator}
 	done := f.LaborStrategy(f).Run(ctx, job.NewDataSupplier(data))
 	f.Logger.Infof("done in %+v with %+v", time.Since(start), done)
 	var result []interface{}

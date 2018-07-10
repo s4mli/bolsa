@@ -1,9 +1,8 @@
 package job
 
 import (
-	"testing"
-
 	"runtime"
+	"testing"
 
 	"github.com/samwooo/bolsa/common"
 	"github.com/stretchr/testify/assert"

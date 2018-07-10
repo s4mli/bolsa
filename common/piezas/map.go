@@ -25,7 +25,7 @@ func Map(ctx context.Context, logger logging.Logger, data []interface{},
 	iterator func(interface{}) (interface{}, error)) []interface{} {
 
 	start := time.Now()
-	e := &mapJ{job.NewJob(logger, 0), iterator}
+	e := &mapJ{job.NewJob(logger, "Map", 0), iterator}
 	done := e.LaborStrategy(e).Run(ctx, job.NewDataSupplier(data))
 	e.Logger.Infof("done in %+v with %+v", time.Since(start), done)
 	var result []interface{}

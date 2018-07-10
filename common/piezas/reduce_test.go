@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/samwooo/bolsa/common"
 	"github.com/samwooo/bolsa/common/logging"
 	"github.com/stretchr/testify/assert"
 )
@@ -21,19 +20,17 @@ var reduceIte = func(k interface{}, memo interface{}) (interface{}, error) {
 }
 
 func testReduceWithSingleError(t *testing.T) {
-	logging.DefaultLogger(fmt.Sprintf(" < %s > ", common.APP_NAME),
-		logging.LogLevelFromString("DEBUG"), 100)
+	logging.DefaultLogger("", logging.LogLevelFromString("INFO"), 100)
 
 	input := []interface{}{1, 2, 3, 4, 5, 6, 7, 8, "abc"}
 	memo := 0
-	r, err := Reduce(context.Background(), logging.GetLogger("reduce test "), input, memo, reduceIte)
+	r, err := Reduce(context.Background(), logging.GetLogger("test "), input, memo, reduceIte)
 	assert.Equal(t, 36, r)
-	assert.Equal(t, "× labor failed ( [1 2 3 4 5 6 7 8 abc], cast abc error )", err.Error())
+	assert.Equal(t, "✗ labor failed ( [1 2 3 4 5 6 7 8 abc], cast abc error )", err.Error())
 }
 
 func testReduceWithMultipleError(t *testing.T) {
-	logging.DefaultLogger(fmt.Sprintf(" < %s > ", common.APP_NAME),
-		logging.LogLevelFromString("DEBUG"), 100)
+	logging.DefaultLogger("", logging.LogLevelFromString("INFO"), 100)
 
 	input := []interface{}{
 		1, 2, 3, 4, 5, 6, 7, 8,
@@ -44,20 +41,19 @@ func testReduceWithMultipleError(t *testing.T) {
 		"ab", "bc", "cd",
 	}
 	memo := 0
-	r, err := Reduce(context.Background(), logging.GetLogger("reduce test "), input, memo, reduceIte)
+	r, err := Reduce(context.Background(), logging.GetLogger("test "), input, memo, reduceIte)
 	assert.Equal(t, 180, r)
 	assert.Equal(t,
-		"× labor failed ( [1 2 3 4 5 6 7 8 1 2 3 4 5 6 7 8 1 2 3 4 5 6 7 8 1 2 3 4 5 6 7 8"+
+		"✗ labor failed ( [1 2 3 4 5 6 7 8 1 2 3 4 5 6 7 8 1 2 3 4 5 6 7 8 1 2 3 4 5 6 7 8"+
 			" 1 2 3 4 5 6 7 8 ab bc cd], cast ab error | cast bc error | cast cd error )", err.Error())
 }
 
 func testReduceWithoutError(t *testing.T) {
-	logging.DefaultLogger(fmt.Sprintf(" < %s > ", common.APP_NAME),
-		logging.LogLevelFromString("DEBUG"), 100)
+	logging.DefaultLogger("", logging.LogLevelFromString("INFO"), 100)
 
 	input := []interface{}{1, 2, 3, 4, 5, 6, 7, 8}
 	memo := 0
-	r, err := Reduce(context.Background(), logging.GetLogger("reduce test "), input, memo, reduceIte)
+	r, err := Reduce(context.Background(), logging.GetLogger("test "), input, memo, reduceIte)
 	assert.Equal(t, 36, r)
 	assert.Equal(t, nil, err)
 }

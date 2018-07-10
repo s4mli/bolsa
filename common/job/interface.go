@@ -35,12 +35,9 @@ type Error struct {
 }
 
 func (je Error) Error() string {
-	return fmt.Sprintf("× %s failed %s", je.st.String(), je.error.Error())
+	return fmt.Sprintf("✗ %s failed %s", je.st.String(), je.error.Error())
 }
-
-func newError(st strategyType, err error) *Error {
-	return &Error{st, err}
-}
+func newError(st strategyType, err error) *Error { return &Error{st, err} }
 
 ////////////////////////
 // Task & Job Result //
@@ -48,16 +45,12 @@ type Done struct {
 	P interface{} // parameter
 	R interface{} // result
 	E error       // error
-	X interface{} // anything as u wish, normally is nil
 }
 
 func (d *Done) String() string {
-	return fmt.Sprintf("\n * P: %+v\n * X: %+v\n * R , E: ( %+v , %+v )\n", d.P, d.X, d.R, d.E)
+	return fmt.Sprintf("\n ⬨ P: %+v\n ⬨ R , E: ( %+v , %+v )\n", d.P, d.R, d.E)
 }
-
-func newDone(para interface{}, result interface{}, err error, extra interface{}) Done {
-	return Done{para, result, err, extra}
-}
+func newDone(para, result interface{}, err error) Done { return Done{para, result, err} }
 
 /////////////////////
 // batch strategy //
@@ -76,7 +69,7 @@ type laborStrategy interface {
 // retry strategy //
 type retryStrategy interface {
 	Worth(Done) bool
-	Forgo() bool
+	Limit() int
 }
 
 /////////////////////
@@ -88,6 +81,7 @@ type errorStrategy interface {
 ////////////////////////
 // Job data supplier //
 type supplier interface {
+	Name() string
 	Adapt() <-chan Done
 }
 
@@ -95,6 +89,7 @@ type supplier interface {
 // Job //
 type Job struct {
 	Logger  logging.Logger
+	name    string
 	workers int
 	batchStrategy
 	laborStrategy
