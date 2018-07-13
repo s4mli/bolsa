@@ -30,12 +30,12 @@ func (ht *strategyType) String() string {
 ////////////////
 // Job Error //
 type Error struct {
-	st strategyType
+	T strategyType
 	error
 }
 
 func (je Error) Error() string {
-	return fmt.Sprintf("✗ %s failed %s", je.st.String(), je.error.Error())
+	return fmt.Sprintf("✗ %s failed %s", je.T.String(), je.error.Error())
 }
 func newError(st strategyType, err error) *Error { return &Error{st, err} }
 

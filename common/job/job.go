@@ -6,9 +6,8 @@ import (
 	"os"
 	"os/signal"
 	"runtime"
-	"syscall"
-
 	"sync"
+	"syscall"
 
 	"github.com/samwooo/bolsa/common/logging"
 )
@@ -170,7 +169,7 @@ func (j *Job) retry(ctx context.Context, jobDone []Done, quit <-chan bool) []Don
 		batchRetries, laborRetries []interface{}) {
 
 		bypassRetry := func(r Done) error {
-			if e, ok := r.E.(*Error); ok && e.st == typeBatch {
+			if e, ok := r.E.(*Error); ok && e.T == typeBatch {
 				if groupedPara, isArray := r.P.([]interface{}); isArray {
 					batchRetries, batchFailed = append(batchRetries, groupedPara...), func() []Done {
 						for _, para := range groupedPara {
