@@ -26,7 +26,7 @@ func Every(ctx context.Context, logger logging.Logger, data []interface{},
 
 	start := time.Now()
 	e := &everyJ{job.NewJob(logger, "every", 0), iterator}
-	done := e.LaborStrategy(e).Run(ctx, job.NewDataSupplier(data))
+	done := e.LaborStrategy(e).Run(ctx, job.NewDataFeeder(data))
 	e.Logger.Infof("done in %+v with %+v", time.Since(start), done)
 	for _, d := range done {
 		if d.E != nil {

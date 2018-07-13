@@ -19,7 +19,7 @@ func TestTaskWithSingleWorkerWithoutBatch(t *testing.T) {
 	output := NewTask(logging.GetLogger(" task test "), "TestTaskWithoutBatch",
 		func(ctx context.Context, d Done) Done {
 			return newDone(nil, d.P, nil)
-		}).Run(context.Background(), 1, 1, NewDataSupplier(with).Adapt())
+		}).Run(context.Background(), 1, 1, NewDataFeeder(with).Adapt())
 
 	for d := range output {
 		assert.Equal(t, true, common.IsIn(d.R, with))
@@ -34,7 +34,7 @@ func TestTaskWithNWorkersWithoutBatch(t *testing.T) {
 	output := NewTask(logging.GetLogger(" task test "), "TestTaskWithoutBatch",
 		func(ctx context.Context, d Done) Done {
 			return newDone(nil, d.P, nil)
-		}).Run(context.Background(), runtime.NumCPU(), 1, NewDataSupplier(with).Adapt())
+		}).Run(context.Background(), runtime.NumCPU(), 1, NewDataFeeder(with).Adapt())
 
 	for d := range output {
 		assert.Equal(t, true, common.IsIn(d.R, with))
@@ -49,7 +49,7 @@ func TestTaskWithSingleWorkerWithBatch(t *testing.T) {
 	output := NewTask(logging.GetLogger(" task test "), "TestTaskWithoutBatch",
 		func(ctx context.Context, d Done) Done {
 			return newDone(nil, d.P, nil)
-		}).Run(context.Background(), 1, 2, NewDataSupplier(with).Adapt())
+		}).Run(context.Background(), 1, 2, NewDataFeeder(with).Adapt())
 
 	for d := range output {
 		rs, ok := d.R.([]interface{})
@@ -68,7 +68,7 @@ func TestTaskWithNWorkersWithBatch(t *testing.T) {
 	output := NewTask(logging.GetLogger(" task test "), "TestTaskWithoutBatch",
 		func(ctx context.Context, d Done) Done {
 			return newDone(nil, d.P, nil)
-		}).Run(context.Background(), runtime.NumCPU(), 3, NewDataSupplier(with).Adapt())
+		}).Run(context.Background(), runtime.NumCPU(), 3, NewDataFeeder(with).Adapt())
 
 	for d := range output {
 		rs, ok := d.R.([]interface{})

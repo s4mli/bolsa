@@ -78,9 +78,9 @@ type errorStrategy interface {
 	OnError(Done)
 }
 
-////////////////////////
-// Job data supplier //
-type supplier interface {
+/////////////////
+// Job feeder //
+type feeder interface {
 	Name() string
 	Adapt() <-chan Done
 }

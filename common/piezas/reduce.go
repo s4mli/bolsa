@@ -51,7 +51,7 @@ func Reduce(ctx context.Context, logger logging.Logger, data []interface{}, memo
 	start := time.Now()
 	r := &reduceJ{job.NewJob(logger, "Reduce", 1),
 		len(data), memo, iterator}
-	done := r.BatchStrategy(r).LaborStrategy(r).Run(ctx, job.NewDataSupplier(data))
+	done := r.BatchStrategy(r).LaborStrategy(r).Run(ctx, job.NewDataFeeder(data))
 	r.Logger.Infof("done in %+v with %+v", time.Since(start), done)
 	if len(done) <= 0 {
 		return memo, fmt.Errorf("unknown error")

@@ -78,7 +78,7 @@ func TestJobWithNoBatchNoLabor(t *testing.T) {
 	jt := newJobTester(nil, nil)
 	with := []interface{}{1, 2, 3}
 	assert.Equal(t, 1, jt.batchSize())
-	allDone := jt.Run(context.Background(), NewDataSupplier(with))
+	allDone := jt.Run(context.Background(), NewDataFeeder(with))
 	assert.Equal(t, len(with), len(allDone))
 	for _, done := range allDone {
 		assert.Equal(t, true, common.IsIn(done.P, with))
@@ -92,7 +92,7 @@ func TestJobWithNoBatchButLaborError(t *testing.T) {
 	jt := newJobTester(nil, &laborWithError{})
 	with := []interface{}{1, 2, 3}
 	assert.Equal(t, 1, jt.batchSize())
-	allDone := jt.Run(context.Background(), NewDataSupplier(with))
+	allDone := jt.Run(context.Background(), NewDataFeeder(with))
 	assert.Equal(t, len(with), len(allDone))
 	for _, done := range allDone {
 		assert.Equal(t, true, common.IsIn(done.P, with))
@@ -106,7 +106,7 @@ func TestJobWithNoBatchButLabor(t *testing.T) {
 	jt := newJobTester(nil, &laborWithoutError{})
 	with := []interface{}{1, 2, 3}
 	assert.Equal(t, 1, jt.batchSize())
-	allDone := jt.Run(context.Background(), NewDataSupplier(with))
+	allDone := jt.Run(context.Background(), NewDataFeeder(with))
 	assert.Equal(t, len(with), len(allDone))
 	for _, done := range allDone {
 		assert.Equal(t, true, common.IsIn(done.P, with))
@@ -120,7 +120,7 @@ func TestJobBatch1WithErrorNoLabor(t *testing.T) {
 	jt := newJobTester(&batch1WithError{}, nil)
 	with := []interface{}{1, 2, 3}
 	assert.Equal(t, 1, jt.batchSize())
-	allDone := jt.Run(context.Background(), NewDataSupplier(with))
+	allDone := jt.Run(context.Background(), NewDataFeeder(with))
 	assert.Equal(t, len(with), len(allDone))
 	for _, done := range allDone {
 		assert.Equal(t, true, common.IsIn(done.P, with))
@@ -136,7 +136,7 @@ func TestJobBatch1WithErrorLaborWithError(t *testing.T) {
 	jt := newJobTester(&batch1WithError{}, &laborWithError{})
 	with := []interface{}{1, 2, 3}
 	assert.Equal(t, 1, jt.batchSize())
-	allDone := jt.Run(context.Background(), NewDataSupplier(with))
+	allDone := jt.Run(context.Background(), NewDataFeeder(with))
 	assert.Equal(t, len(with), len(allDone))
 	for _, done := range allDone {
 		assert.Equal(t, true, common.IsIn(done.P, with))
@@ -152,7 +152,7 @@ func TestJobBatch1WithErrorLaborWithoutError(t *testing.T) {
 	jt := newJobTester(&batch1WithError{}, &laborWithoutError{})
 	with := []interface{}{1, 2, 3}
 	assert.Equal(t, 1, jt.batchSize())
-	allDone := jt.Run(context.Background(), NewDataSupplier(with))
+	allDone := jt.Run(context.Background(), NewDataFeeder(with))
 	assert.Equal(t, len(with), len(allDone))
 	for _, done := range allDone {
 		assert.Equal(t, true, common.IsIn(done.P, with))
@@ -168,7 +168,7 @@ func TestJobBatch1WithoutErrorNoLabor(t *testing.T) {
 	jt := newJobTester(&batch1WithoutError{}, nil)
 	with := []interface{}{1, 2, 3}
 	assert.Equal(t, 1, jt.batchSize())
-	allDone := jt.Run(context.Background(), NewDataSupplier(with))
+	allDone := jt.Run(context.Background(), NewDataFeeder(with))
 	assert.Equal(t, len(with), len(allDone))
 	for _, done := range allDone {
 		assert.Equal(t, true, common.IsIn(done.P, with))
@@ -182,7 +182,7 @@ func TestJobBatch1WithoutErrorLaborWithError(t *testing.T) {
 	jt := newJobTester(&batch1WithoutError{}, &laborWithError{})
 	with := []interface{}{1, 2, 3}
 	assert.Equal(t, 1, jt.batchSize())
-	allDone := jt.Run(context.Background(), NewDataSupplier(with))
+	allDone := jt.Run(context.Background(), NewDataFeeder(with))
 	assert.Equal(t, len(with), len(allDone))
 	for _, done := range allDone {
 		assert.Equal(t, true, common.IsIn(done.P, with))
@@ -198,7 +198,7 @@ func TestJobBatch1WithoutErrorLaborWithoutError(t *testing.T) {
 	jt := newJobTester(&batch1WithoutError{}, &laborWithoutError{})
 	with := []interface{}{1, 2, 3}
 	assert.Equal(t, 1, jt.batchSize())
-	allDone := jt.Run(context.Background(), NewDataSupplier(with))
+	allDone := jt.Run(context.Background(), NewDataFeeder(with))
 	assert.Equal(t, len(with), len(allDone))
 	for _, done := range allDone {
 		assert.Equal(t, true, common.IsIn(done.P, with))
@@ -212,7 +212,7 @@ func TestJobBatchNWithErrorNoLabor(t *testing.T) {
 	jt := newJobTester(&batchNWithError{3}, nil)
 	with := []interface{}{1, 2, 3, 4, 5, 6, 7, 8}
 	assert.Equal(t, 3, jt.batchSize())
-	allDone := jt.Run(context.Background(), NewDataSupplier(with))
+	allDone := jt.Run(context.Background(), NewDataFeeder(with))
 	assert.Equal(t, len(with), len(allDone))
 	for _, done := range allDone {
 		assert.Equal(t, true, common.IsIn(done.P, with))
@@ -228,7 +228,7 @@ func TestJobBatchNWithErrorLaborWithError(t *testing.T) {
 	jt := newJobTester(&batchNWithError{3}, &laborWithError{})
 	with := []interface{}{1, 2, 3, 4, 5, 6, 7, 8}
 	assert.Equal(t, 3, jt.batchSize())
-	allDone := jt.Run(context.Background(), NewDataSupplier(with))
+	allDone := jt.Run(context.Background(), NewDataFeeder(with))
 	assert.Equal(t, len(with), len(allDone))
 	for _, done := range allDone {
 		assert.Equal(t, true, common.IsIn(done.P, with))
@@ -244,7 +244,7 @@ func TestJobBatchNWithErrorLaborWithoutError(t *testing.T) {
 	jt := newJobTester(&batchNWithError{3}, &laborWithoutError{})
 	with := []interface{}{1, 2, 3, 4, 5, 6, 7, 8}
 	assert.Equal(t, 3, jt.batchSize())
-	allDone := jt.Run(context.Background(), NewDataSupplier(with))
+	allDone := jt.Run(context.Background(), NewDataFeeder(with))
 	assert.Equal(t, len(with), len(allDone))
 	for _, done := range allDone {
 		assert.Equal(t, true, common.IsIn(done.P, with))
@@ -260,7 +260,7 @@ func TestJobBatchNWithoutErrorNoLabor(t *testing.T) {
 	jt := newJobTester(&batchNWithoutError{3}, nil)
 	with := []interface{}{1, 2, 3, 4, 5, 6, 7, 8}
 	assert.Equal(t, 3, jt.batchSize())
-	allDone := jt.Run(context.Background(), NewDataSupplier(with))
+	allDone := jt.Run(context.Background(), NewDataFeeder(with))
 	for _, done := range allDone {
 		assert.Equal(t, true, common.IsIn(done.P, with))
 		assert.Equal(t, true, common.IsIn(done.R, with))
@@ -273,7 +273,7 @@ func TestJobBatchNWithoutErrorLaborWithError(t *testing.T) {
 	jt := newJobTester(&batchNWithoutError{3}, &laborWithError{})
 	with := []interface{}{1, 2, 3, 4, 5, 6, 7, 8}
 	assert.Equal(t, 3, jt.batchSize())
-	allDone := jt.Run(context.Background(), NewDataSupplier(with))
+	allDone := jt.Run(context.Background(), NewDataFeeder(with))
 	for _, done := range allDone {
 		assert.Equal(t, true, common.IsIn(done.P, with))
 		assert.Equal(t, nil, done.R)
@@ -286,7 +286,7 @@ func TestJobBatchNWithoutErrorLaborWithoutError(t *testing.T) {
 	jt := newJobTester(&batchNWithoutError{3}, &laborWithoutError{})
 	with := []interface{}{1, 2, 3, 4, 5, 6, 7, 8}
 	assert.Equal(t, 3, jt.batchSize())
-	allDone := jt.Run(context.Background(), NewDataSupplier(with))
+	allDone := jt.Run(context.Background(), NewDataFeeder(with))
 	for _, done := range allDone {
 		assert.Equal(t, true, common.IsIn(done.P, with))
 		assert.Equal(t, true, common.IsIn(done.R, with))
@@ -313,7 +313,7 @@ func TestJobItself(t *testing.T) {
 	jt.BatchStrategy(jt).LaborStrategy(jt).RetryStrategy(jt).ErrorStrategy(jt)
 	with := []interface{}{1, 2, 3, 4, 5, 6, 7, 8}
 	assert.Equal(t, jt.maxRetry, jt.batchSize())
-	allDone := jt.Run(context.Background(), NewDataSupplier(with))
+	allDone := jt.Run(context.Background(), NewDataFeeder(with))
 	for _, done := range allDone {
 		assert.Equal(t, true, common.IsIn(done.P, with))
 		v, _ := done.P.(int)
@@ -337,7 +337,7 @@ func TestJobItselfWithoutRetry(t *testing.T) {
 	jt.BatchStrategy(jt).LaborStrategy(jt).RetryStrategy(&retryHook{}).ErrorStrategy(jt)
 	with := []interface{}{1, 2, 3, 4, 5, 6, 7, 8}
 	assert.Equal(t, jt.maxRetry, jt.batchSize())
-	allDone := jt.Run(context.Background(), NewDataSupplier(with))
+	allDone := jt.Run(context.Background(), NewDataFeeder(with))
 	for _, done := range allDone {
 		assert.Equal(t, true, common.IsIn(done.P, with))
 		v, _ := done.P.(int)
@@ -368,7 +368,7 @@ func TestBlindlyRetryJob(t *testing.T) {
 	brj.LaborStrategy(brj).RetryStrategy(brj)
 	assert.Equal(t, 1, brj.batchSize())
 	with := []interface{}{"blindly retry job"}
-	allDone := brj.Run(context.Background(), NewDataSupplier(with))
+	allDone := brj.Run(context.Background(), NewDataFeeder(with))
 	assert.Equal(t, 1, len(allDone))
 	for _, done := range allDone {
 		assert.Equal(t, true, common.IsIn(done.P, with))
@@ -382,7 +382,7 @@ func TestBlindlyRetryJobWithNil(t *testing.T) {
 	brj.LaborStrategy(brj).RetryStrategy(brj)
 	assert.Equal(t, 1, brj.batchSize())
 	with := []interface{}{nil}
-	allDone := brj.Run(context.Background(), NewDataSupplier(with))
+	allDone := brj.Run(context.Background(), NewDataFeeder(with))
 	assert.Equal(t, 1, len(allDone))
 	for _, done := range allDone {
 		assert.Equal(t, true, common.IsIn(done.P, with))

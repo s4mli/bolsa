@@ -26,7 +26,7 @@ func Each(ctx context.Context, logger logging.Logger, data []interface{},
 
 	start := time.Now()
 	e := &eachJ{job.NewJob(logger, "Each", 0), ite}
-	done := e.LaborStrategy(e).Run(ctx, job.NewDataSupplier(data))
+	done := e.LaborStrategy(e).Run(ctx, job.NewDataFeeder(data))
 	e.Logger.Infof("done in %+v with %+v", time.Since(start), done)
 	return done
 }

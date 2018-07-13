@@ -8,6 +8,8 @@ import (
 	"runtime"
 	"syscall"
 
+	"sync"
+
 	"github.com/samwooo/bolsa/common/logging"
 )
 
@@ -19,12 +21,12 @@ func (j *Job) batchSize() int {
 	}
 }
 
-func (j *Job) drain(ctx context.Context, s supplier) <-chan Done {
+func (j *Job) drain(ctx context.Context, f feeder) <-chan Done {
 	return NewTask(j.Logger, "drain",
 		func(ctx context.Context, d Done) Done {
 			j.Logger.Debugf("✔ %s drain succeed ( %+v )", j.name, d)
 			return newDone(nil, d.P, nil)
-		}).Run(ctx, j.workers, j.batchSize(), s.Adapt())
+		}).Run(ctx, j.workers, j.batchSize(), f.Adapt())
 }
 
 func (j *Job) feed(ctx context.Context, input <-chan Done) <-chan Done {
@@ -89,11 +91,30 @@ func (j *Job) chew(ctx context.Context, input <-chan Done) <-chan Done {
 	}
 }
 
-func (j *Job) digest(ctx context.Context, input <-chan Done) <-chan []Done {
+func (j *Job) digest(ctx context.Context, inputs ...<-chan Done) <-chan []Done {
+	merge := func(inputs ...<-chan Done) <-chan Done {
+		var wg sync.WaitGroup
+		wg.Add(len(inputs))
+		output := make(chan Done)
+		for _, input := range inputs {
+			go func(input <-chan Done) {
+				for in := range input {
+					output <- in
+				}
+				wg.Done()
+			}(input)
+		}
+		go func() {
+			wg.Wait()
+			close(output)
+		}()
+		return output
+	}
+
 	out := make(chan []Done)
 	go func() {
 		var results []Done
-		for r := range input {
+		for r := range merge(inputs...) {
 			if r.E != nil {
 				if j.errorStrategy != nil {
 					j.errorStrategy.OnError(r)
@@ -107,16 +128,16 @@ func (j *Job) digest(ctx context.Context, input <-chan Done) <-chan []Done {
 	return out
 }
 
-func (j *Job) run(ctx context.Context, s supplier) []Done {
+func (j *Job) run(ctx context.Context, f feeder) []Done {
 	description := func() string {
 		return fmt.Sprintf(
 			"\n   ⬨ Job - %s\n"+
+				"      ⬨ Feeder          %s\n"+
 				"      ⬨ Workers         %d\n"+
-				"      ⬨ Supplier        %s\n"+
 				"      ⬨ BatchStrategy   %s\n"+
 				"      ⬨ LaborStrategy   %s\n"+
 				"      ⬨ RetryStrategy   %s\n",
-			j.name, j.workers, s.Name(),
+			j.name, f.Name(), j.workers,
 			func() string {
 				if j.batchStrategy != nil {
 					return fmt.Sprintf("✔ ( %d )", j.batchStrategy.Size())
@@ -141,7 +162,7 @@ func (j *Job) run(ctx context.Context, s supplier) []Done {
 		)
 	}
 	j.Logger.Info(description())
-	return <-j.digest(ctx, j.chew(ctx, j.feed(ctx, j.drain(ctx, s))))
+	return <-j.digest(ctx, j.chew(ctx, j.feed(ctx, j.drain(ctx, f))))
 }
 
 func (j *Job) retry(ctx context.Context, jobDone []Done, quit <-chan bool) []Done {
@@ -181,7 +202,7 @@ func (j *Job) retry(ctx context.Context, jobDone []Done, quit <-chan bool) []Don
 
 	doRetry := func(retries int, batchRetries, laborRetries []interface{}) []Done {
 		runJob := func(ctx context.Context, j *Job, data []interface{}) []Done {
-			return j.run(ctx, NewDataSupplier(data))
+			return j.run(ctx, NewDataFeeder(data))
 		}
 		var retryDone []Done
 		if len(laborRetries) > 0 {
@@ -238,14 +259,14 @@ func (j *Job) ErrorStrategy(eh errorStrategy) *Job {
 	return j
 }
 
-func (j *Job) Run(ctx context.Context, s supplier) []Done {
+func (j *Job) Run(ctx context.Context, f feeder) []Done {
 	sig, finished, quit := make(chan os.Signal), make(chan bool), make(chan bool)
 	signals := []os.Signal{syscall.SIGHUP, syscall.SIGINT, syscall.SIGILL, syscall.SIGSYS, syscall.SIGSTOP,
 		syscall.SIGKILL, syscall.SIGTERM, syscall.SIGTRAP, syscall.SIGQUIT, syscall.SIGABRT, syscall.SIGSTKFLT}
 	signal.Notify(sig, signals...)
 
 	runJob := func() []Done {
-		jobDone := j.run(ctx, s)
+		jobDone := j.run(ctx, f)
 		if j.retryStrategy != nil {
 			jobDone = j.retry(ctx, jobDone, quit)
 		}
