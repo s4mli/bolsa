@@ -10,10 +10,12 @@ import (
 ///////////
 // Task //
 type task func(ctx context.Context, d Done) Done
+type exit func(ctx context.Context)
 type Task struct {
 	logger logging.Logger
 	name   string
 	task   task
+	exit   exit
 }
 
 func (t *Task) Run(ctx context.Context, workers, inputBatch int, input <-chan Done) <-chan Done {
@@ -23,6 +25,9 @@ func (t *Task) Run(ctx context.Context, workers, inputBatch int, input <-chan Do
 				<-waitress
 			}
 			close(ch)
+			if t.exit != nil {
+				t.exit(ctx)
+			}
 		}()
 	}
 
@@ -114,6 +119,6 @@ func (t *Task) Run(ctx context.Context, workers, inputBatch int, input <-chan Do
 	return output
 }
 
-func NewTask(logger logging.Logger, name string, task task) *Task {
-	return &Task{logger, name, task}
+func NewTask(logger logging.Logger, name string, task task, exit exit) *Task {
+	return &Task{logger, name, task, exit}
 }
