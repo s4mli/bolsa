@@ -3,108 +3,64 @@ package job
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"github.com/samwooo/bolsa/common/logging"
 )
 
 ///////////
 // Task //
-type task func(ctx context.Context, d Done) Done
-type exit func(ctx context.Context)
+type task func(ctx context.Context, d Done) (result Done, ok bool)
 type Task struct {
 	logger logging.Logger
 	name   string
 	task   task
-	exit   exit
 }
 
-func (t *Task) Run(ctx context.Context, workers, inputBatch int, input <-chan Done) <-chan Done {
-	waitAndExitGracefully := func(workers int, ch chan<- Done, waitress <-chan bool) {
+func (t *Task) run(ctx context.Context, input <-chan Done, output chan<- Done) {
+	apply := func(d Done, output chan<- Done) {
+		if r, ok := t.task(ctx, NewDone(d.R, nil, d.E, d.retries, d.D, d.Key)); ok {
+			t.logger.Debugf("✔ %s task done ( %+v )", t.name, r)
+			output <- r
+		} else {
+			t.logger.Infof("✔ %s task skipped ( %+v )", t.name, r)
+		}
+	}
+
+	for {
+		select {
+		case d, more := <-input:
+			if more {
+				if d.R == nil {
+					t.logger.Warnf("✔ %s task skipped ( %+v, R ? )", t.name, d)
+				} else {
+					apply(d, output)
+				}
+			} else {
+				t.logger.Debugf("✔ %s task exit ...", t.name)
+				return
+			}
+		default:
+			time.Sleep(time.Millisecond * 10)
+		}
+	}
+}
+
+func (t *Task) Run(ctx context.Context, workers int, input <-chan Done) <-chan Done {
+	exitGracefully := func(workers int, output chan<- Done, waitress <-chan bool) {
 		go func() {
 			for i := 0; i < workers; i++ {
 				<-waitress
 			}
-			close(ch)
-			if t.exit != nil {
-				t.exit(ctx)
-			}
+			close(output)
 		}()
 	}
 
-	runTask := func(workers, inputBatch int, input <-chan Done, output chan<- Done) <-chan bool {
-
-		runWithBatch := func(inputBatch int, input <-chan Done, output chan<- Done) {
-
-			fillWithBatch := func(batched []Done, output chan<- Done) {
-				var rs []interface{}
-				for _, b := range batched {
-					if b.R != nil && b.E == nil {
-						// last R as a P
-						rs = append(rs, b.R)
-					}
-				}
-
-				if len(rs) > 0 {
-					r := t.task(ctx, newDone(rs, nil, nil))
-					t.logger.Debugf("✔ %s task done ( %+v )", t.name, r)
-					output <- r
-				} else {
-					// error
-					t.logger.Debugf("✔ %s task skipped ( %+v )", t.name, batched[0])
-					output <- batched[0]
-				}
-			}
-
-			var batched []Done
-			for {
-				if d, more := <-input; more {
-					if d.E != nil || d.R == nil {
-						t.logger.Debugf("✔ %s task skipped ( %+v )", t.name, d)
-						batched = append(batched, d)
-						fillWithBatch(batched, output)
-						batched = []Done{}
-					} else {
-						batched = append(batched, d)
-						if len(batched) == inputBatch {
-							fillWithBatch(batched, output)
-							batched = []Done{}
-						}
-					}
-				} else {
-					break
-				}
-			}
-			if len(batched) > 0 {
-				fillWithBatch(batched, output)
-			}
-		}
-
-		runWithoutBatch := func(input <-chan Done, output chan<- Done) {
-
-			fillWithoutBatch := func(d Done, output chan<- Done) {
-				if d.E != nil || d.R == nil {
-					t.logger.Debugf("✔ %s task skipped ( %+v )", t.name, d)
-					output <- d
-				} else {
-					r := t.task(ctx, newDone(d.R, nil, nil))
-					t.logger.Debugf("✔ %s task done ( %+v )", t.name, r)
-					output <- r
-				}
-			}
-
-			for d := range input {
-				fillWithoutBatch(d, output)
-			}
-		}
-
+	runTask := func(workers int, input <-chan Done, output chan<- Done) <-chan bool {
 		waitress := make(chan bool, workers)
 		for i := 0; i < workers; i++ {
 			go func() {
-				if inputBatch > 1 {
-					runWithBatch(inputBatch, input, output)
-				} else {
-					runWithoutBatch(input, output)
-				}
+				t.run(ctx, input, output)
 				waitress <- true
 			}()
 		}
@@ -112,13 +68,12 @@ func (t *Task) Run(ctx context.Context, workers, inputBatch int, input <-chan Do
 	}
 
 	t.logger.Debug(fmt.Sprintf("\n   ⬨ Task - %s\n"+
-		"      ⬨ Workers    %d\n"+
-		"      ⬨ Batch      %d\n", t.name, workers, inputBatch))
+		"      ⬨ Workers    %d\n", t.name, workers))
 	output := make(chan Done, workers)
-	waitAndExitGracefully(workers, output, runTask(workers, inputBatch, input, output))
+	exitGracefully(workers, output, runTask(workers, input, output))
 	return output
 }
 
-func NewTask(logger logging.Logger, name string, task task, exit exit) *Task {
-	return &Task{logger, name, task, exit}
+func NewTask(logger logging.Logger, name string, task task) *Task {
+	return &Task{logger, name, task}
 }

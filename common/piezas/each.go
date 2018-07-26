@@ -2,6 +2,7 @@ package piezas
 
 import (
 	"context"
+	"sync"
 	"time"
 
 	"github.com/samwooo/bolsa/common/job"
@@ -22,11 +23,11 @@ func (myself *eachJ) Work(ctx context.Context, p interface{}) (r interface{}, e 
 }
 
 func Each(ctx context.Context, logger logging.Logger, data []interface{},
-	ite func(interface{}) (interface{}, error)) []job.Done {
-
+	ite func(interface{}) (interface{}, error)) sync.Map {
 	start := time.Now()
-	e := &eachJ{job.NewJob(logger, "Each", 0), ite}
-	done := e.LaborStrategy(e).Run(ctx, job.NewDataFeeder(data))
+	f := job.NewRetryableFeeder(ctx, data, true)
+	e := &eachJ{job.NewJob(logger, "Each", 0, f), ite}
+	done := e.LaborStrategy(e).Run(ctx)
 	e.Logger.Infof("done in %+v with %+v", time.Since(start), done)
 	return done
 }

@@ -3,6 +3,7 @@ package job
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"github.com/samwooo/bolsa/common/logging"
 )
@@ -10,15 +11,12 @@ import (
 type strategyType int
 
 const (
-	typeBatch strategyType = iota
-	typeLabor
+	typeLabor strategyType = iota
 	typeRetry
 )
 
 func (ht *strategyType) String() string {
 	switch *ht {
-	case typeBatch:
-		return "reduce"
 	case typeLabor:
 		return "labor"
 	case typeRetry:
@@ -42,21 +40,21 @@ func newError(st strategyType, err error) *Error { return &Error{st, err} }
 ////////////////////////
 // Task & Job Result //
 type Done struct {
-	P interface{} // parameter
-	R interface{} // result
-	E error       // error
+	P       interface{} // parameter
+	R       interface{} // result
+	E       error       // error
+	D       interface{} // original data
+	Key     string      // key
+	retries int         // retry times
 }
 
 func (d *Done) String() string {
-	return fmt.Sprintf("\n ⬨ P: %+v\n ⬨ R , E: ( %+v , %+v )\n", d.P, d.R, d.E)
+	return fmt.Sprintf("\n ⬨ D: %+v\n ⬨ P: %+v\n ⬨ R , E: ( %+v , %+v )\n ⬨ Key: %s\n ⬨ Retries: %d",
+		d.D, d.P, d.R, d.E, d.Key, d.retries)
 }
-func newDone(para, result interface{}, err error) Done { return Done{para, result, err} }
-
-/////////////////////
-// batch strategy //
-type batchStrategy interface {
-	Size() int
-	Reduce(context.Context, []interface{}) (interface{}, error)
+func KeyFrom(d interface{}) string { return fmt.Sprintf("%+v-%d", d, time.Now().UnixNano()) }
+func NewDone(para, result interface{}, err error, retries int, d interface{}, k string) Done {
+	return Done{para, result, err, d, k, retries}
 }
 
 /////////////////////
@@ -82,7 +80,10 @@ type errorStrategy interface {
 // Job feeder //
 type feeder interface {
 	Name() string
-	Adapt() <-chan Done
+	Push(Done)        // push sth into a feeder at anytime
+	Close()           // safe to close a feeder at anytime
+	Adapt() chan Done // adapt to a ch so a job can drain from
+	Closed() bool     // to tell whether a feeder is closed or not
 }
 
 //////////
@@ -91,7 +92,7 @@ type Job struct {
 	Logger  logging.Logger
 	name    string
 	workers int
-	batchStrategy
+	feeder  feeder
 	laborStrategy
 	retryStrategy
 	errorStrategy

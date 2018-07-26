@@ -25,17 +25,29 @@ func Every(ctx context.Context, logger logging.Logger, data []interface{},
 	iterator func(interface{}) (bool, error)) bool {
 
 	start := time.Now()
-	e := &everyJ{job.NewJob(logger, "every", 0), iterator}
-	done := e.LaborStrategy(e).Run(ctx, job.NewDataFeeder(data))
-	e.Logger.Infof("done in %+v with %+v", time.Since(start), done)
-	for _, d := range done {
-		if d.E != nil {
-			return false
-		} else {
-			if r, ok := d.R.(bool); !ok || !r {
+	f := job.NewRetryableFeeder(ctx, data, true)
+	e := &everyJ{job.NewJob(logger, "every", 0, f), iterator}
+	r := e.LaborStrategy(e).Run(ctx)
+	e.Logger.Infof("done in %+v with %+v", time.Since(start), r)
+	pass := true
+	r.Range(func(key, value interface{}) bool {
+		if d, ok := value.(job.Done); ok {
+			if d.E != nil {
+				pass = false
 				return false
+			} else {
+				if r, ok := d.R.(bool); !ok {
+					pass = false
+					return false
+				} else {
+					pass = pass && r
+					return true
+				}
 			}
+		} else {
+			pass = false
+			return false
 		}
-	}
-	return true
+	})
+	return pass
 }

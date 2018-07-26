@@ -25,16 +25,20 @@ func Filter(ctx context.Context, logger logging.Logger, data []interface{},
 	iterator func(interface{}) (bool, error)) []interface{} {
 
 	start := time.Now()
-	f := &filterJ{job.NewJob(logger, "Filter", 0), iterator}
-	done := f.LaborStrategy(f).Run(ctx, job.NewDataFeeder(data))
-	f.Logger.Infof("done in %+v with %+v", time.Since(start), done)
+	f := job.NewRetryableFeeder(ctx, data, true)
+	filter := &filterJ{job.NewJob(logger, "Filter", 0, f), iterator}
+	r := filter.LaborStrategy(filter).Run(ctx)
+	filter.Logger.Infof("done in %+v with %+v", time.Since(start), r)
 	var result []interface{}
-	for _, d := range done {
-		if d.E == nil {
-			if v, ok := d.R.(bool); ok && v {
-				result = append(result, d.P)
+	r.Range(func(key, value interface{}) bool {
+		if d, ok := value.(job.Done); ok {
+			if d.E == nil {
+				if v, ok := d.R.(bool); ok && v {
+					result = append(result, d.D)
+				}
 			}
 		}
-	}
+		return true
+	})
 	return result
 }

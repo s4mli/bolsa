@@ -25,14 +25,18 @@ func Map(ctx context.Context, logger logging.Logger, data []interface{},
 	iterator func(interface{}) (interface{}, error)) []interface{} {
 
 	start := time.Now()
-	e := &mapJ{job.NewJob(logger, "Map", 0), iterator}
-	done := e.LaborStrategy(e).Run(ctx, job.NewDataFeeder(data))
-	e.Logger.Infof("done in %+v with %+v", time.Since(start), done)
+	f := job.NewRetryableFeeder(ctx, data, true)
+	e := &mapJ{job.NewJob(logger, "Map", 0, f), iterator}
+	r := e.LaborStrategy(e).Run(ctx)
+	e.Logger.Infof("done in %+v with %+v", time.Since(start), r)
 	var result []interface{}
-	for _, d := range done {
-		if d.E == nil && d.R != nil {
-			result = append(result, d.R)
+	r.Range(func(key, value interface{}) bool {
+		if d, ok := value.(job.Done); ok {
+			if d.E == nil && d.R != nil {
+				result = append(result, d.R)
+			}
 		}
-	}
+		return true
+	})
 	return result
 }
