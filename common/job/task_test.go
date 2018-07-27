@@ -11,7 +11,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func testWithNWorkerWithNBatch(t *testing.T, workers int, noDrama, usingContext bool) {
+func testWithNWorker(t *testing.T, workers int, noDrama, usingContext bool) {
 	logging.DefaultLogger("", logging.LogLevelFromString("ERROR"), 100)
 	data := []interface{}{0, 1, 2, 3, 4, 5, 6, 7, 8, 9}
 	var ctx = context.Background()
@@ -21,7 +21,7 @@ func testWithNWorkerWithNBatch(t *testing.T, workers int, noDrama, usingContext 
 			time.Duration(len(data)*20)*time.Millisecond))
 		defer cancelFn()
 	}
-	f := NewRetryableFeeder(ctx, data, noDrama)
+	f := NewRetryableFeeder(ctx, data, 1, noDrama)
 	if !usingContext {
 		time.AfterFunc(time.Duration(len(data)*20)*time.Millisecond, func() { f.Close() })
 	}
@@ -36,21 +36,21 @@ func testWithNWorkerWithNBatch(t *testing.T, workers int, noDrama, usingContext 
 }
 
 func TestTaskWithSingleWorkerWithContext(t *testing.T) {
-	testWithNWorkerWithNBatch(t, 1, true, true)
-	testWithNWorkerWithNBatch(t, 1, false, true)
+	testWithNWorker(t, 1, true, true)
+	testWithNWorker(t, 1, false, true)
 }
 
 func TestTaskWithSingleWorkerWithDeadline(t *testing.T) {
-	testWithNWorkerWithNBatch(t, 1, true, false)
-	testWithNWorkerWithNBatch(t, 1, false, false)
+	testWithNWorker(t, 1, true, false)
+	testWithNWorker(t, 1, false, false)
 }
 
 func TestTaskWithNWorkersWithContext(t *testing.T) {
-	testWithNWorkerWithNBatch(t, runtime.NumCPU(), true, true)
-	testWithNWorkerWithNBatch(t, runtime.NumCPU(), false, true)
+	testWithNWorker(t, runtime.NumCPU(), true, true)
+	testWithNWorker(t, runtime.NumCPU(), false, true)
 }
 
 func TestTaskWithNWorkersWithDeadline(t *testing.T) {
-	testWithNWorkerWithNBatch(t, runtime.NumCPU(), true, false)
-	testWithNWorkerWithNBatch(t, runtime.NumCPU(), false, false)
+	testWithNWorker(t, runtime.NumCPU(), true, false)
+	testWithNWorker(t, runtime.NumCPU(), false, false)
 }

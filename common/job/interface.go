@@ -58,27 +58,34 @@ func NewDone(para, result interface{}, err error, retries int, d interface{}, k 
 }
 
 /////////////////////
-// labor strategy //
+// Labor Strategy //
 type laborStrategy interface {
 	Work(ctx context.Context, p interface{}) (r interface{}, e error)
 }
 
 /////////////////////
-// retry strategy //
+// Retry Strategy //
 type retryStrategy interface {
 	Worth(Done) bool
 	Limit() int
 }
 
 /////////////////////
-// error strategy //
+// Error Strategy //
 type errorStrategy interface {
 	OnError(Done)
 }
 
+/////////////////////
+// Batch Strategy //
+type batchStrategy interface {
+	Size() int
+}
+
 /////////////////
-// Job feeder //
+// Job Feeder //
 type feeder interface {
+	batchStrategy
 	Name() string
 	Retry(Done)
 	Push(interface{}) // push sth into a feeder at anytime

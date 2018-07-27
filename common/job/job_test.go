@@ -34,8 +34,8 @@ type JobTester struct {
 func (*JobTester) Worth(d Done) bool { return d.E != nil }
 func (jt *JobTester) Limit() int     { return jt.maxRetry }
 func (jt *JobTester) OnError(Done)   {}
-func newJobTester(as laborStrategy, with []interface{}, maxRetry int) *JobTester {
-	f := NewRetryableFeeder(context.Background(), with, false)
+func newJobTester(as laborStrategy, with []interface{}, batch, maxRetry int) *JobTester {
+	f := NewRetryableFeeder(context.Background(), with, batch, false)
 	jt := &JobTester{NewJob(logging.GetLogger(""), "",
 		runtime.NumCPU(), f), maxRetry}
 	jt.LaborStrategy(as).RetryStrategy(jt).ErrorStrategy(jt)
@@ -45,7 +45,7 @@ func newJobTester(as laborStrategy, with []interface{}, maxRetry int) *JobTester
 
 func TestJobWithNoLaborNoRetry(t *testing.T) {
 	with := []interface{}{1, 2, 3}
-	jt := newJobTester(nil, with, 0)
+	jt := newJobTester(nil, with, 1, 0)
 	r := jt.Run(context.Background())
 	count := 0
 	r.Range(func(key, value interface{}) bool {
@@ -63,7 +63,7 @@ func TestJobWithNoLaborNoRetry(t *testing.T) {
 
 func TestJobWithNoLaborButRetry(t *testing.T) {
 	with := []interface{}{1, 2, 3}
-	jt := newJobTester(nil, with, 3)
+	jt := newJobTester(nil, with, 1, 3)
 	r := jt.Run(context.Background())
 	count := 0
 	r.Range(func(key, value interface{}) bool {
@@ -81,7 +81,7 @@ func TestJobWithNoLaborButRetry(t *testing.T) {
 
 func TestJobWithLaborErrorNoRetry(t *testing.T) {
 	with := []interface{}{1, 2, 3}
-	jt := newJobTester(&laborWithError{}, with, 0)
+	jt := newJobTester(&laborWithError{}, with, 1, 0)
 	r := jt.Run(context.Background())
 	count := 0
 	r.Range(func(key, value interface{}) bool {
@@ -99,7 +99,7 @@ func TestJobWithLaborErrorNoRetry(t *testing.T) {
 
 func TestJobWithLaborErrorButRetry(t *testing.T) {
 	with := []interface{}{1, 2, 3}
-	jt := newJobTester(&laborWithError{}, with, 3)
+	jt := newJobTester(&laborWithError{}, with, 1, 3)
 	r := jt.Run(context.Background())
 	count := 0
 	r.Range(func(key, value interface{}) bool {
@@ -117,7 +117,7 @@ func TestJobWithLaborErrorButRetry(t *testing.T) {
 
 func TestJobWithLaborNoRetry(t *testing.T) {
 	with := []interface{}{1, 2, 3}
-	jt := newJobTester(&laborWithoutError{}, with, 0)
+	jt := newJobTester(&laborWithoutError{}, with, 1, 0)
 	r := jt.Run(context.Background())
 	count := 0
 	r.Range(func(key, value interface{}) bool {
@@ -135,7 +135,7 @@ func TestJobWithLaborNoRetry(t *testing.T) {
 
 func TestJobWithLaborAndRetry(t *testing.T) {
 	with := []interface{}{1, 2, 3}
-	jt := newJobTester(&laborWithoutError{}, with, 3)
+	jt := newJobTester(&laborWithoutError{}, with, 1, 3)
 	r := jt.Run(context.Background())
 	count := 0
 	r.Range(func(key, value interface{}) bool {
@@ -162,7 +162,7 @@ func (jt *JobTester) Work(ctx context.Context, p interface{}) (r interface{}, e 
 
 func TestJobItselfWithRetry(t *testing.T) {
 	with := []interface{}{1, 2, 3, 4, 5, 6, 7, 8}
-	f := NewRetryableFeeder(context.Background(), with, false)
+	f := NewRetryableFeeder(context.Background(), with, 1, false)
 	jt := &JobTester{NewJob(logging.GetLogger(""), "", runtime.NumCPU(), f), 3}
 	jt.LaborStrategy(jt).RetryStrategy(jt).ErrorStrategy(jt)
 	time.AfterFunc(time.Duration(time.Millisecond*time.Duration(len(with)*100)), func() { f.Close() })
@@ -196,7 +196,7 @@ func (rh *retryHook) Worth(Done) bool { return false }
 func (rh *retryHook) Limit() int      { return 3 }
 func TestJobItselfWithNoRetry(t *testing.T) {
 	with := []interface{}{1, 2, 3, 4, 5, 6, 7, 8}
-	f := NewRetryableFeeder(context.Background(), with, false)
+	f := NewRetryableFeeder(context.Background(), with, 1, false)
 	jt := &JobTester{NewJob(logging.GetLogger(""), "", runtime.NumCPU(), f), 3}
 	jt.LaborStrategy(jt).RetryStrategy(&retryHook{}).ErrorStrategy(jt)
 	time.AfterFunc(time.Duration(time.Millisecond*time.Duration(len(with)*100)), func() { f.Close() })
@@ -237,7 +237,7 @@ func (bj *blindlyRetryJob) Work(ctx context.Context, p interface{}) (r interface
 
 func TestBlindlyRetryJob(t *testing.T) {
 	with := []interface{}{"blindlyRetryJob"}
-	f := NewRetryableFeeder(context.Background(), with, false)
+	f := NewRetryableFeeder(context.Background(), with, 1, false)
 	brj := &blindlyRetryJob{NewJob(logging.GetLogger(""), "", runtime.NumCPU(),
 		f), 3}
 	brj.LaborStrategy(brj).RetryStrategy(brj)
