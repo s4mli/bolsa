@@ -154,7 +154,6 @@ func (j *Job) Run(ctx context.Context) *sync.Map {
 				result.Store(r.Key, r)
 			}
 		}
-		j.Logger.Debugf("♥ %s finished with %+v", j.name, result)
 		ready <- &result
 		close(ready)
 	}()

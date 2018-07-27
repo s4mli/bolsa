@@ -9,6 +9,7 @@ import (
 	"sync"
 	"sync/atomic"
 	"syscall"
+	"time"
 )
 
 ////////////////////////////
@@ -40,9 +41,8 @@ func NewRetryableFeeder(ctx context.Context, data []interface{}, noDrama bool) *
 	rf.closed.Store(false)
 
 	sig := make(chan os.Signal, 1)
-	signal.Notify(sig,
-		syscall.SIGHUP, syscall.SIGINT, syscall.SIGILL, syscall.SIGSYS, syscall.SIGSTOP,
-		syscall.SIGKILL, syscall.SIGTERM, syscall.SIGTRAP, syscall.SIGQUIT, syscall.SIGABRT)
+	signal.Notify(sig, syscall.SIGHUP, syscall.SIGINT, syscall.SIGILL, syscall.SIGSYS,
+		syscall.SIGTERM, syscall.SIGTRAP, syscall.SIGQUIT, syscall.SIGABRT)
 
 	go func() {
 		for _, d := range data {
@@ -85,6 +85,7 @@ func NewRetryableFeeder(ctx context.Context, data []interface{}, noDrama bool) *
 				rf.Close()
 				return
 			default:
+				time.Sleep(time.Millisecond * 10)
 			}
 		}
 	}()
