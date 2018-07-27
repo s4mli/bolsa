@@ -21,8 +21,8 @@ type retryableFeeder struct {
 	closed atomic.Value
 }
 
-func (rf *retryableFeeder) Push(d Done)      { rf.data.Store(d.String(), d) }
 func (rf *retryableFeeder) Name() string     { return fmt.Sprintf("✔︎ retryable") }
+func (rf *retryableFeeder) Retry(d Done)     { rf.data.Store(d.String(), d) }
 func (rf *retryableFeeder) Adapt() chan Done { return rf.output }
 func (rf *retryableFeeder) Close() {
 	if !rf.Closed() {
@@ -34,7 +34,10 @@ func (rf *retryableFeeder) Closed() bool {
 	closed, _ := rf.closed.Load().(bool)
 	return closed
 }
-
+func (rf *retryableFeeder) Push(data interface{}) {
+	d := NewDone(nil, data, nil, 0, data, KeyFrom(data))
+	rf.data.Store(d.String(), d)
+}
 func NewRetryableFeeder(ctx context.Context, data []interface{}, noDrama bool) *retryableFeeder {
 	rf := retryableFeeder{sync.Map{}, make(chan bool),
 		make(chan Done, runtime.NumCPU()*8), atomic.Value{}}
@@ -46,7 +49,7 @@ func NewRetryableFeeder(ctx context.Context, data []interface{}, noDrama bool) *
 
 	go func() {
 		for _, d := range data {
-			rf.Push(NewDone(nil, d, nil, 0, d, KeyFrom(d)))
+			rf.Push(d)
 		}
 		if noDrama {
 			rf.Close()

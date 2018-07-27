@@ -48,7 +48,7 @@ func (j *Job) chew(ctx context.Context, input <-chan Done) <-chan Done {
 						// R = P for drain
 						lr := NewDone(nil, d.P, laborError, d.retries+1, d.D, d.Key)
 						j.Logger.Warnf("✔ %s retry chew failure ( %+v )", j.name, lr)
-						j.feeder.Push(lr)
+						j.feeder.Retry(lr)
 						return laborFailed, laborFailed.retries > j.retryLimit() || j.feeder.Closed()
 					} else {
 						return laborFailed, true

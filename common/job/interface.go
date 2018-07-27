@@ -80,7 +80,8 @@ type errorStrategy interface {
 // Job feeder //
 type feeder interface {
 	Name() string
-	Push(Done)        // push sth into a feeder at anytime
+	Retry(Done)
+	Push(interface{}) // push sth into a feeder at anytime
 	Close()           // safe to close a feeder at anytime
 	Adapt() chan Done // adapt to a ch so a job can drain from
 	Closed() bool     // to tell whether a feeder is closed or not
