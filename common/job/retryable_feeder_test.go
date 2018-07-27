@@ -12,10 +12,12 @@ import (
 
 func testWithInSingleGoroutine(t *testing.T, noDrama, usingContext bool) {
 	data := []interface{}{0, 1, 2, 3, 4, 5, 6, 7, 8, 9}
-	ctx := context.Background()
+	var ctx = context.Background()
+	var cancelFn context.CancelFunc
 	if usingContext {
-		ctx, _ = context.WithDeadline(context.Background(), time.Now().Add(
+		ctx, cancelFn = context.WithDeadline(context.Background(), time.Now().Add(
 			time.Duration(len(data)*20)*time.Millisecond))
+		defer cancelFn()
 	}
 	f := NewRetryableFeeder(ctx, data, noDrama)
 	if !usingContext {
@@ -36,10 +38,12 @@ func testWithInSingleGoroutine(t *testing.T, noDrama, usingContext bool) {
 
 func testWithinMultipleGoroutines(t *testing.T, noDrama, usingContext bool) {
 	data := []interface{}{0, 1, 2, 3, 4, 5, 6, 7, 8, 9}
-	ctx := context.Background()
+	var ctx = context.Background()
+	var cancelFn context.CancelFunc
 	if usingContext {
-		ctx, _ = context.WithDeadline(context.Background(), time.Now().Add(
+		ctx, cancelFn = context.WithDeadline(context.Background(), time.Now().Add(
 			time.Duration(len(data)*20)*time.Millisecond))
+		defer cancelFn()
 	}
 	f := NewRetryableFeeder(ctx, data, noDrama)
 	if !usingContext {

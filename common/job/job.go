@@ -140,25 +140,25 @@ func (j *Job) ErrorStrategy(eh errorStrategy) *Job {
 	return j
 }
 
-func (j *Job) Run(ctx context.Context) sync.Map {
+func (j *Job) Run(ctx context.Context) *sync.Map {
 	j.Logger.Info(j.description())
-	out := make(chan sync.Map)
+	ready := make(chan *sync.Map)
 	go func() {
-		var results sync.Map
+		var result sync.Map
 		for r := range j.digest(ctx, j.chew(ctx, j.drain(ctx, j.feeder.Adapt()))) {
-			if v, existing := results.Load(r.Key); existing {
+			if v, existing := result.Load(r.Key); existing {
 				if d, _ := v.(Done); d.retries < r.retries {
-					results.Store(r.Key, r)
+					result.Store(r.Key, r)
 				}
 			} else {
-				results.Store(r.Key, r)
+				result.Store(r.Key, r)
 			}
 		}
-		out <- results
-		close(out)
-		j.Logger.Debugf("♥ %s finished with %+v", j.name, results)
+		j.Logger.Debugf("♥ %s finished with %+v", j.name, result)
+		ready <- &result
+		close(ready)
 	}()
-	return <-out
+	return <-ready
 }
 
 func NewJob(logger logging.Logger, name string, workers int, feeder feeder) *Job {

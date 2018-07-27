@@ -23,7 +23,7 @@ func (myself *eachJ) Work(ctx context.Context, p interface{}) (r interface{}, e 
 }
 
 func Each(ctx context.Context, logger logging.Logger, data []interface{},
-	ite func(interface{}) (interface{}, error)) sync.Map {
+	ite func(interface{}) (interface{}, error)) *sync.Map {
 	start := time.Now()
 	f := job.NewRetryableFeeder(ctx, data, true)
 	e := &eachJ{job.NewJob(logger, "Each", 0, f), ite}
