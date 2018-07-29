@@ -25,7 +25,7 @@ func Every(ctx context.Context, logger logging.Logger, data []interface{},
 	iterator func(interface{}) (bool, error)) bool {
 
 	start := time.Now()
-	f := job.NewRetryableFeeder(ctx, data, 1, true)
+	f := job.NewDataFeeder(ctx, logger, data, 1, true)
 	e := &everyJ{job.NewJob(logger, "every", 0, f), iterator}
 	r := e.LaborStrategy(e).Run(ctx)
 	e.Logger.Infof("done in %+v with %+v", time.Since(start), r)

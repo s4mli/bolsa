@@ -20,10 +20,10 @@ type Task struct {
 func (t *Task) run(ctx context.Context, input <-chan Done, output chan<- Done) {
 	apply := func(d Done, output chan<- Done) {
 		if r, ok := t.task(ctx, NewDone(d.R, nil, d.E, d.retries, d.D, d.Key)); ok {
-			t.logger.Debugf("✔ %s task done ( %+v )", t.name, r)
+			t.logger.Debugf("✔ task %s done ( %+v )", t.name, r)
 			output <- r
 		} else {
-			t.logger.Infof("✔ %s task skipped ( %+v )", t.name, r)
+			t.logger.Infof("✔ task %s skipped ( %+v )", t.name, r)
 		}
 	}
 
@@ -32,12 +32,12 @@ func (t *Task) run(ctx context.Context, input <-chan Done, output chan<- Done) {
 		case d, more := <-input:
 			if more {
 				if d.R == nil {
-					t.logger.Warnf("✔ %s task skipped ( %+v, R ? )", t.name, d)
+					t.logger.Warnf("✔ task %s skipped ( %+v, R ? )", t.name, d)
 				} else {
 					apply(d, output)
 				}
 			} else {
-				t.logger.Debugf("✔ %s task exit ...", t.name)
+				t.logger.Debugf("✔ task %s exit ...", t.name)
 				return
 			}
 		default:

@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/samwooo/bolsa/common"
+	"github.com/samwooo/bolsa/common/logging"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -19,7 +20,7 @@ func testWithInSingleGoroutine(t *testing.T, noDrama, usingContext bool, batch i
 			time.Duration(len(data)*20)*time.Millisecond))
 		defer cancelFn()
 	}
-	f := NewRetryableFeeder(ctx, data, batch, noDrama)
+	f := NewDataFeeder(ctx, logging.GetLogger(""), data, batch, noDrama)
 	if !usingContext {
 		time.AfterFunc(time.Duration(len(data)*20)*time.Millisecond, func() { f.Close() })
 	}
@@ -66,7 +67,7 @@ func testWithinMultipleGoroutines(t *testing.T, noDrama, usingContext bool, batc
 			time.Duration(len(data)*20)*time.Millisecond))
 		defer cancelFn()
 	}
-	f := NewRetryableFeeder(ctx, data, batch, noDrama)
+	f := NewDataFeeder(ctx, logging.GetLogger(""), data, batch, noDrama)
 	if !usingContext {
 		time.AfterFunc(time.Duration(len(data)*20)*time.Millisecond, func() { f.Close() })
 	}
@@ -116,7 +117,7 @@ func testWithinMultipleGoroutines(t *testing.T, noDrama, usingContext bool, batc
 	assert.Equal(t, group(), count)
 }
 
-func TestRetryableFeederWithinSingleGoroutineWithContext(t *testing.T) {
+func TestDataFeederWithinSingleGoroutineWithContext(t *testing.T) {
 	testWithInSingleGoroutine(t, true, true, -1)
 	testWithInSingleGoroutine(t, true, true, 0)
 	testWithInSingleGoroutine(t, true, true, 1)
@@ -129,7 +130,7 @@ func TestRetryableFeederWithinSingleGoroutineWithContext(t *testing.T) {
 	testWithInSingleGoroutine(t, false, true, 12)
 }
 
-func TestRetryableFeederWithinSingleGoroutineWithDeadline(t *testing.T) {
+func TestDataFeederWithinSingleGoroutineWithDeadline(t *testing.T) {
 	testWithInSingleGoroutine(t, true, false, -1)
 	testWithInSingleGoroutine(t, true, false, 0)
 	testWithInSingleGoroutine(t, true, false, 1)
@@ -142,7 +143,7 @@ func TestRetryableFeederWithinSingleGoroutineWithDeadline(t *testing.T) {
 	testWithInSingleGoroutine(t, false, false, 12)
 }
 
-func TestRetryableFeederWithinMultipleGoroutinesWithContext(t *testing.T) {
+func TestDataFeederWithinMultipleGoroutinesWithContext(t *testing.T) {
 	testWithinMultipleGoroutines(t, true, true, -1)
 	testWithinMultipleGoroutines(t, true, true, 0)
 	testWithinMultipleGoroutines(t, true, true, 1)
@@ -155,7 +156,7 @@ func TestRetryableFeederWithinMultipleGoroutinesWithContext(t *testing.T) {
 	testWithinMultipleGoroutines(t, false, true, 12)
 }
 
-func TestRetryableFeederWithinMultipleGoroutinesWithDeadline(t *testing.T) {
+func TestDataFeederWithinMultipleGoroutinesWithDeadline(t *testing.T) {
 	testWithinMultipleGoroutines(t, true, false, -1)
 	testWithinMultipleGoroutines(t, true, false, 0)
 	testWithinMultipleGoroutines(t, true, false, 1)

@@ -28,7 +28,7 @@ func (j *Job) retryLimit() int {
 func (j *Job) drain(ctx context.Context, input <-chan Done) <-chan Done {
 	return NewTask(j.Logger, fmt.Sprintf("%s-drain", j.name),
 		func(ctx context.Context, d Done) (Done, bool) {
-			j.Logger.Debugf("✔ %s drain succeed ( %+v )", j.name, d)
+			j.Logger.Debugf("✔ job %s drain succeed ( %+v )", j.name, d)
 			// R = P for feed
 			return NewDone(nil, d.P, d.E, d.retries, d.D, d.Key), true
 		}).Run(ctx, j.workers, input)
@@ -40,21 +40,21 @@ func (j *Job) chew(ctx context.Context, input <-chan Done) <-chan Done {
 		return NewTask(j.Logger, fmt.Sprintf("%s-chew", j.name),
 			func(ctx context.Context, d Done) (Done, bool) {
 				if data, err := work(ctx, d.P); err != nil {
-					j.Logger.Warnf("✗ %s chew failed ( %+v, %s )", j.name, d, err.Error())
+					j.Logger.Warnf("✗ job %s chew failed ( %+v, %s )", j.name, d, err.Error())
 					laborError := newError(typeLabor, fmt.Errorf("( %+v, %s )", d.P, err.Error()))
 					// P is P & R is R for digest
 					laborFailed := NewDone(d.P, data, laborError, d.retries, d.D, d.Key)
 					if j.worthRetry(laborFailed) && d.retries < j.retryLimit() {
 						// R = P for drain
 						lr := NewDone(nil, d.P, laborError, d.retries+1, d.D, d.Key)
-						j.Logger.Warnf("✔ %s retry chew failure ( %+v )", j.name, lr)
+						j.Logger.Warnf("✔ job %s retry chew failure ( %+v )", j.name, lr)
 						j.feeder.Retry(lr)
 						return laborFailed, laborFailed.retries > j.retryLimit() || j.feeder.Closed()
 					} else {
 						return laborFailed, true
 					}
 				} else {
-					j.Logger.Debugf("✔ %s chew succeed ( %+v, %+v)", j.name, d.P, data)
+					j.Logger.Debugf("✔ job %s chew succeed ( %+v, %+v)", j.name, d.P, data)
 					// R = P for digest
 					return NewDone(nil, data, nil, d.retries, d.D, d.Key), true
 				}
@@ -160,7 +160,7 @@ func (j *Job) Run(ctx context.Context) *sync.Map {
 	return <-ready
 }
 
-func NewJob(logger logging.Logger, name string, workers int, feeder feeder) *Job {
+func NewJob(logger logging.Logger, name string, workers int, feeder *Feeder) *Job {
 	if workers <= 0 {
 		workers = runtime.NumCPU() * 64
 	}

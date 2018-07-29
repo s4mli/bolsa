@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"time"
 
+	"sync/atomic"
+
 	"github.com/samwooo/bolsa/common/logging"
 )
 
@@ -79,19 +81,28 @@ type errorStrategy interface {
 /////////////////////
 // Batch Strategy //
 type batchStrategy interface {
-	Size() int
+	Batch() int
+}
+
+/////////////////
+// Feeder IMP //
+type feederImp interface {
+	name() string
+	doPush(chan Done, interface{}) error // push sth into a feeder at anytime
+	doInit(chan Done) error              // do sth when init
+	doWork(chan Done) error              // do things
+	doExit(chan Done) error              // do sth when exit
+	doRetry(chan Done, Done) error       // do retry
 }
 
 /////////////////
 // Job Feeder //
-type feeder interface {
-	batchStrategy
-	Name() string
-	Retry(Done)
-	Push(interface{}) // push sth into a feeder at anytime
-	Close()           // safe to close a feeder at anytime
-	Adapt() chan Done // adapt to a ch so a job can drain from
-	Closed() bool     // to tell whether a feeder is closed or not
+type Feeder struct {
+	logger logging.Logger
+	quit   chan bool
+	output chan Done
+	closed atomic.Value
+	feederImp
 }
 
 //////////
@@ -100,7 +111,7 @@ type Job struct {
 	Logger  logging.Logger
 	name    string
 	workers int
-	feeder  feeder
+	feeder  *Feeder
 	laborStrategy
 	retryStrategy
 	errorStrategy

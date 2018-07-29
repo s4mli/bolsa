@@ -12,8 +12,6 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-var _ = logging.DefaultLogger("", logging.LogLevelFromString("ERROR"), 100)
-
 type laborWithError struct{}
 
 func (a *laborWithError) Work(ctx context.Context, p interface{}) (r interface{}, e error) {
@@ -35,7 +33,7 @@ func (*JobTester) Worth(d Done) bool { return d.E != nil }
 func (jt *JobTester) Limit() int     { return jt.maxRetry }
 func (jt *JobTester) OnError(Done)   {}
 func newJobTester(as laborStrategy, with []interface{}, batch, maxRetry int) *JobTester {
-	f := NewRetryableFeeder(context.Background(), with, batch, false)
+	f := NewDataFeeder(context.Background(), logging.GetLogger(""), with, batch, false)
 	jt := &JobTester{NewJob(logging.GetLogger(""), "",
 		runtime.NumCPU(), f), maxRetry}
 	jt.LaborStrategy(as).RetryStrategy(jt).ErrorStrategy(jt)
@@ -162,7 +160,7 @@ func (jt *JobTester) Work(ctx context.Context, p interface{}) (r interface{}, e 
 
 func TestJobItselfWithRetry(t *testing.T) {
 	with := []interface{}{1, 2, 3, 4, 5, 6, 7, 8}
-	f := NewRetryableFeeder(context.Background(), with, 1, false)
+	f := NewDataFeeder(context.Background(), logging.GetLogger(""), with, 1, false)
 	jt := &JobTester{NewJob(logging.GetLogger(""), "", runtime.NumCPU(), f), 3}
 	jt.LaborStrategy(jt).RetryStrategy(jt).ErrorStrategy(jt)
 	time.AfterFunc(time.Duration(time.Millisecond*time.Duration(len(with)*100)), func() { f.Close() })
@@ -196,7 +194,7 @@ func (rh *retryHook) Worth(Done) bool { return false }
 func (rh *retryHook) Limit() int      { return 3 }
 func TestJobItselfWithNoRetry(t *testing.T) {
 	with := []interface{}{1, 2, 3, 4, 5, 6, 7, 8}
-	f := NewRetryableFeeder(context.Background(), with, 1, false)
+	f := NewDataFeeder(context.Background(), logging.GetLogger(""), with, 1, false)
 	jt := &JobTester{NewJob(logging.GetLogger(""), "", runtime.NumCPU(), f), 3}
 	jt.LaborStrategy(jt).RetryStrategy(&retryHook{}).ErrorStrategy(jt)
 	time.AfterFunc(time.Duration(time.Millisecond*time.Duration(len(with)*100)), func() { f.Close() })
@@ -237,7 +235,7 @@ func (bj *blindlyRetryJob) Work(ctx context.Context, p interface{}) (r interface
 
 func TestBlindlyRetryJob(t *testing.T) {
 	with := []interface{}{"blindlyRetryJob"}
-	f := NewRetryableFeeder(context.Background(), with, 1, false)
+	f := NewDataFeeder(context.Background(), logging.GetLogger(""), with, 1, false)
 	brj := &blindlyRetryJob{NewJob(logging.GetLogger(""), "", runtime.NumCPU(),
 		f), 3}
 	brj.LaborStrategy(brj).RetryStrategy(brj)

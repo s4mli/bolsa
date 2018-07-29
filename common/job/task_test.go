@@ -12,7 +12,6 @@ import (
 )
 
 func testWithNWorker(t *testing.T, workers int, noDrama, usingContext bool) {
-	logging.DefaultLogger("", logging.LogLevelFromString("ERROR"), 100)
 	data := []interface{}{0, 1, 2, 3, 4, 5, 6, 7, 8, 9}
 	var ctx = context.Background()
 	var cancelFn context.CancelFunc = nil
@@ -21,7 +20,7 @@ func testWithNWorker(t *testing.T, workers int, noDrama, usingContext bool) {
 			time.Duration(len(data)*20)*time.Millisecond))
 		defer cancelFn()
 	}
-	f := NewRetryableFeeder(ctx, data, 1, noDrama)
+	f := NewDataFeeder(ctx, logging.GetLogger(""), data, 1, noDrama)
 	if !usingContext {
 		time.AfterFunc(time.Duration(len(data)*20)*time.Millisecond, func() { f.Close() })
 	}

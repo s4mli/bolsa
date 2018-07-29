@@ -25,7 +25,7 @@ func Filter(ctx context.Context, logger logging.Logger, data []interface{},
 	iterator func(interface{}) (bool, error)) []interface{} {
 
 	start := time.Now()
-	f := job.NewRetryableFeeder(ctx, data, 1, true)
+	f := job.NewDataFeeder(ctx, logger, data, 1, true)
 	filter := &filterJ{job.NewJob(logger, "Filter", 0, f), iterator}
 	r := filter.LaborStrategy(filter).Run(ctx)
 	filter.Logger.Infof("done in %+v with %+v", time.Since(start), r)
