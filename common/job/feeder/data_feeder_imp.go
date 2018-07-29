@@ -1,7 +1,6 @@
 package feeder
 
 import (
-	"context"
 	"fmt"
 	"strings"
 	"sync"
@@ -16,7 +15,6 @@ type dataFeederImp struct {
 	initial []interface{}
 	shift   sync.Map
 	batch   int
-	share.BatchStrategy
 }
 
 func (df *dataFeederImp) pump(ch chan share.Done) error {
@@ -77,9 +75,7 @@ func (df *dataFeederImp) doPush(ch chan share.Done, data interface{}) error {
 	}
 	return nil
 }
-func (df *dataFeederImp) Batch() int { return df.batch }
-func newDataFeederImp(ctx context.Context, data []interface{}, batch int, RIPRightAfterInit bool) feederImp {
-	df := dataFeederImp{data, sync.Map{}, batch, nil}
-	df.BatchStrategy = &df
+func newDataFeederImp(data []interface{}, batch int) feederImp {
+	df := dataFeederImp{data, sync.Map{}, batch}
 	return &df
 }

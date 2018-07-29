@@ -15,28 +15,27 @@ import (
 //////////
 // Job //
 type Job struct {
-	Logger        logging.Logger
-	name          string
-	workers       int
-	feeder        *feeder.Feeder
-	laborStrategy share.LaborStrategy
-	retryStrategy share.RetryStrategy
-	errorStrategy share.ErrorStrategy
+	Logger  logging.Logger
+	name    string
+	workers int
+	feeder  *feeder.Feeder
+	labor   share.LaborStrategy
+	retry   share.RetryStrategy
 }
 
 func (j *Job) worthRetry(d share.Done) bool {
-	if j.retryStrategy == nil {
+	if j.retry == nil {
 		return false
 	} else {
-		return j.retryStrategy.Worth(d)
+		return j.retry.Worth(d)
 	}
 }
 
 func (j *Job) retryLimit() int {
-	if j.retryStrategy == nil || j.retryStrategy.Limit() < 1 {
+	if j.retry == nil || j.retry.Limit() < 1 {
 		return 0
 	} else {
-		return j.retryStrategy.Limit()
+		return j.retry.Limit()
 	}
 }
 
@@ -75,8 +74,8 @@ func (j *Job) chew(ctx context.Context, input <-chan share.Done) <-chan share.Do
 				}
 			}).Run(ctx, workers, input)
 	}
-	if j.laborStrategy != nil {
-		return chewWithLabor(j.workers, input, j.laborStrategy.Work)
+	if j.labor != nil {
+		return chewWithLabor(j.workers, input, j.labor.Work)
 	} else {
 		return chewWithLabor(j.workers, input,
 			func(ctx context.Context, para interface{}) (interface{}, error) {
@@ -93,11 +92,6 @@ func (j *Job) digest(ctx context.Context, inputs ...<-chan share.Done) <-chan sh
 		for _, in := range inputs {
 			go func(in <-chan share.Done) {
 				for d := range in {
-					if d.E != nil {
-						if j.errorStrategy != nil {
-							j.errorStrategy.OnError(d)
-						}
-					}
 					output <- d
 				}
 				wg.Done()
@@ -124,15 +118,15 @@ func (j *Job) description() string {
 		j.workers,
 
 		func() string {
-			if j.laborStrategy != nil {
+			if j.labor != nil {
 				return "✔"
 			} else {
 				return "✗"
 			}
 		}(),
 		func() string {
-			if j.retryStrategy != nil {
-				return fmt.Sprintf("✔ ( %d )", j.retryStrategy.Limit())
+			if j.retry != nil {
+				return fmt.Sprintf("✔ ( %d )", j.retry.Limit())
 			} else {
 				return "✗"
 			}
@@ -140,18 +134,18 @@ func (j *Job) description() string {
 	)
 }
 
+func (j *Job) Feeder(f *feeder.Feeder) *Job {
+	j.feeder = f
+	return j
+}
+
 func (j *Job) LaborStrategy(lh share.LaborStrategy) *Job {
-	j.laborStrategy = lh
+	j.labor = lh
 	return j
 }
 
 func (j *Job) RetryStrategy(rh share.RetryStrategy) *Job {
-	j.retryStrategy = rh
-	return j
-}
-
-func (j *Job) ErrorStrategy(eh share.ErrorStrategy) *Job {
-	j.errorStrategy = eh
+	j.retry = rh
 	return j
 }
 
@@ -179,7 +173,5 @@ func NewJob(logger logging.Logger, name string, workers int, feeder *feeder.Feed
 	if workers <= 0 {
 		workers = runtime.NumCPU() * 64
 	}
-	j := &Job{logger, name, workers,
-		feeder, nil, nil, nil}
-	return j
+	return &Job{logger, name, workers, feeder, nil, nil}
 }

@@ -3,22 +3,13 @@ package share
 import "context"
 
 /////////////////////
-// Error Strategy //
-type ErrorStrategy interface {
-	OnError(Done)
-}
-
-/////////////////////
-// Batch Strategy //
-type BatchStrategy interface {
-	Batch() int
-}
-
-/////////////////////
 // Labor Strategy //
 type LaborStrategy interface {
 	Work(ctx context.Context, p interface{}) (r interface{}, e error)
 }
+type Labor func(ctx context.Context, p interface{}) (r interface{}, e error)
+
+func (fn Labor) Work(ctx context.Context, p interface{}) (r interface{}, e error) { return fn(ctx, p) }
 
 /////////////////////
 // Retry Strategy //

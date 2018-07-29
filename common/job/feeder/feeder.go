@@ -149,11 +149,11 @@ func newFeeder(ctx context.Context, logger logging.Logger, RIPRightAfterInit boo
 	return &jf
 }
 
-func NewChanFeeder(ctx context.Context, logger logging.Logger, strategy share.LaborStrategy) *Feeder {
-	return newFeeder(ctx, logger, false, newChanFeederImp(ctx, strategy))
+func NewChanFeeder(ctx context.Context, logger logging.Logger, labor share.Labor) *Feeder {
+	return newFeeder(ctx, logger, false, newChanFeederImp(ctx, labor))
 }
 
 func NewDataFeeder(ctx context.Context, logger logging.Logger, data []interface{}, batch int,
 	RIPRightAfterInit bool) *Feeder {
-	return newFeeder(ctx, logger, RIPRightAfterInit, newDataFeederImp(ctx, data, batch, RIPRightAfterInit))
+	return newFeeder(ctx, logger, RIPRightAfterInit, newDataFeederImp(data, batch))
 }

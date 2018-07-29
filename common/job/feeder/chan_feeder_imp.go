@@ -10,19 +10,23 @@ import (
 //////////////////////
 // Chan Feeder IMP //
 type chanFeederImp struct {
-	ctx context.Context
-	share.LaborStrategy
+	ctx   context.Context
+	labor share.Labor
 }
 
 func (cf *chanFeederImp) name() string                    { return fmt.Sprintf("chan") }
 func (cf *chanFeederImp) doInit(ch chan share.Done) error { return nil }
 func (cf *chanFeederImp) doExit(ch chan share.Done) error { return nil }
 func (cf *chanFeederImp) doWork(ch chan share.Done) error {
-	if r, err := cf.Work(cf.ctx, nil); err != nil {
-		return err
+	if cf.labor == nil {
+		return fmt.Errorf("✗ missing loabor")
 	} else {
-		ch <- share.NewDone(nil, r, nil, 0, r, share.KeyFrom(r))
-		return nil
+		if r, err := cf.labor(cf.ctx, nil); err != nil {
+			return err
+		} else {
+			ch <- share.NewDone(nil, r, nil, 0, r, share.KeyFrom(r))
+			return nil
+		}
 	}
 }
 func (cf *chanFeederImp) doRetry(ch chan share.Done, d share.Done) error {
@@ -42,13 +46,6 @@ func (cf *chanFeederImp) doPush(ch chan share.Done, data interface{}) error {
 	}
 	return nil
 }
-func (cf *chanFeederImp) Work(ctx context.Context, p interface{}) (r interface{}, e error) {
-	if cf.LaborStrategy != nil {
-		return cf.LaborStrategy.Work(ctx, p)
-	} else {
-		return p, nil
-	}
-}
-func newChanFeederImp(ctx context.Context, strategy share.LaborStrategy) feederImp {
-	return &chanFeederImp{ctx, strategy}
+func newChanFeederImp(ctx context.Context, labor labor) feederImp {
+	return &chanFeederImp{ctx, labor}
 }

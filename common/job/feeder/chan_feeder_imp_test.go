@@ -16,15 +16,11 @@ var _ = logging.DefaultLogger("", logging.LogLevelFromString("ERROR"), 100)
 
 var COUNTER uint64 = 0
 
-type laborImp struct{}
-
-func (l *laborImp) Work(ctx context.Context, p interface{}) (r interface{}, e error) {
+func withoutError(ctx context.Context, p interface{}) (r interface{}, e error) {
 	return atomic.AddUint64(&COUNTER, 2), nil
 }
 
-type laborImpWithError struct{}
-
-func (l *laborImpWithError) Work(ctx context.Context, p interface{}) (r interface{}, e error) {
+func withError(ctx context.Context, p interface{}) (r interface{}, e error) {
 	return nil, fmt.Errorf("laborError")
 }
 
@@ -36,7 +32,7 @@ func testWithSingleGoroutineWithoutError(t *testing.T, usingContext bool) {
 			time.Duration(200)*time.Millisecond))
 		defer cancelFn()
 	}
-	f := NewChanFeeder(ctx, logging.GetLogger(""), &laborImp{})
+	f := NewChanFeeder(ctx, logging.GetLogger(""), withoutError)
 	if !usingContext {
 		time.AfterFunc(time.Duration(200)*time.Millisecond, func() { f.Close() })
 	}
@@ -63,7 +59,7 @@ func testWithSingleGoroutineWithError(t *testing.T, usingContext bool) {
 			time.Duration(200)*time.Millisecond))
 		defer cancelFn()
 	}
-	f := NewChanFeeder(ctx, logging.GetLogger(""), &laborImpWithError{})
+	f := NewChanFeeder(ctx, logging.GetLogger(""), withError)
 	if !usingContext {
 		time.AfterFunc(time.Duration(200)*time.Millisecond, func() { f.Close() })
 	}
@@ -87,7 +83,7 @@ func testWithMultipleGoroutinesWithoutError(t *testing.T, usingContext bool) {
 			time.Duration(200)*time.Millisecond))
 		defer cancelFn()
 	}
-	f := NewChanFeeder(ctx, logging.GetLogger(""), &laborImp{})
+	f := NewChanFeeder(ctx, logging.GetLogger(""), withoutError)
 	if !usingContext {
 		time.AfterFunc(time.Duration(200)*time.Millisecond, func() { f.Close() })
 	}
@@ -127,7 +123,7 @@ func testWithMultipleGoroutinesWithError(t *testing.T, usingContext bool) {
 			time.Duration(200)*time.Millisecond))
 		defer cancelFn()
 	}
-	f := NewChanFeeder(ctx, logging.GetLogger(""), &laborImpWithError{})
+	f := NewChanFeeder(ctx, logging.GetLogger(""), withError)
 	if !usingContext {
 		time.AfterFunc(time.Duration(200)*time.Millisecond, func() { f.Close() })
 	}

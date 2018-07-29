@@ -40,7 +40,7 @@ func newJobTester(as share.LaborStrategy, with []interface{}, batch, maxRetry in
 	f := feeder.NewDataFeeder(context.Background(), logging.GetLogger(""), with, batch, false)
 	jt := &JobTester{NewJob(logging.GetLogger(""), "",
 		runtime.NumCPU(), f), maxRetry}
-	jt.LaborStrategy(as).RetryStrategy(jt).ErrorStrategy(jt)
+	jt.LaborStrategy(as).RetryStrategy(jt)
 	time.AfterFunc(time.Duration(time.Millisecond*time.Duration(len(with)*100)), func() { f.Close() })
 	return jt
 }
@@ -166,7 +166,7 @@ func TestJobItselfWithRetry(t *testing.T) {
 	with := []interface{}{1, 2, 3, 4, 5, 6, 7, 8}
 	f := feeder.NewDataFeeder(context.Background(), logging.GetLogger(""), with, 1, false)
 	jt := &JobTester{NewJob(logging.GetLogger(""), "", runtime.NumCPU(), f), 3}
-	jt.LaborStrategy(jt).RetryStrategy(jt).ErrorStrategy(jt)
+	jt.LaborStrategy(jt).RetryStrategy(jt)
 	time.AfterFunc(time.Duration(time.Millisecond*time.Duration(len(with)*100)), func() { f.Close() })
 	r := jt.Run(context.Background())
 	count := 0
@@ -200,7 +200,7 @@ func TestJobItselfWithNoRetry(t *testing.T) {
 	with := []interface{}{1, 2, 3, 4, 5, 6, 7, 8}
 	f := feeder.NewDataFeeder(context.Background(), logging.GetLogger(""), with, 1, false)
 	jt := &JobTester{NewJob(logging.GetLogger(""), "", runtime.NumCPU(), f), 3}
-	jt.LaborStrategy(jt).RetryStrategy(&retryHook{}).ErrorStrategy(jt)
+	jt.LaborStrategy(jt).RetryStrategy(&retryHook{})
 	time.AfterFunc(time.Duration(time.Millisecond*time.Duration(len(with)*100)), func() { f.Close() })
 	r := jt.Run(context.Background())
 	count := 0
