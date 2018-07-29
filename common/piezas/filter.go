@@ -5,6 +5,8 @@ import (
 	"time"
 
 	"github.com/samwooo/bolsa/common/job"
+	"github.com/samwooo/bolsa/common/job/feeder"
+	"github.com/samwooo/bolsa/common/job/share"
 	"github.com/samwooo/bolsa/common/logging"
 )
 
@@ -25,13 +27,13 @@ func Filter(ctx context.Context, logger logging.Logger, data []interface{},
 	iterator func(interface{}) (bool, error)) []interface{} {
 
 	start := time.Now()
-	f := job.NewDataFeeder(ctx, logger, data, 1, true)
+	f := feeder.NewDataFeeder(ctx, logger, data, 1, true)
 	filter := &filterJ{job.NewJob(logger, "Filter", 0, f), iterator}
 	r := filter.LaborStrategy(filter).Run(ctx)
 	filter.Logger.Infof("done in %+v with %+v", time.Since(start), r)
 	var result []interface{}
 	r.Range(func(key, value interface{}) bool {
-		if d, ok := value.(job.Done); ok {
+		if d, ok := value.(share.Done); ok {
 			if d.E == nil {
 				if v, ok := d.R.(bool); ok && v {
 					result = append(result, d.D)

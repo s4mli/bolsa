@@ -1,25 +1,26 @@
-package job
+package task
 
 import (
 	"context"
 	"fmt"
 	"time"
 
+	"github.com/samwooo/bolsa/common/job/share"
 	"github.com/samwooo/bolsa/common/logging"
 )
 
 ///////////
 // Task //
-type task func(ctx context.Context, d Done) (result Done, ok bool)
+type task func(ctx context.Context, d share.Done) (result share.Done, ok bool)
 type Task struct {
 	logger logging.Logger
 	name   string
 	task   task
 }
 
-func (t *Task) run(ctx context.Context, input <-chan Done, output chan<- Done) {
-	apply := func(d Done, output chan<- Done) {
-		if r, ok := t.task(ctx, NewDone(d.R, nil, d.E, d.retries, d.D, d.Key)); ok {
+func (t *Task) run(ctx context.Context, input <-chan share.Done, output chan<- share.Done) {
+	apply := func(d share.Done, output chan<- share.Done) {
+		if r, ok := t.task(ctx, share.NewDone(d.R, nil, d.E, d.Retries, d.D, d.Key)); ok {
 			t.logger.Debugf("✔ task %s done ( %+v )", t.name, r)
 			output <- r
 		} else {
@@ -46,8 +47,8 @@ func (t *Task) run(ctx context.Context, input <-chan Done, output chan<- Done) {
 	}
 }
 
-func (t *Task) Run(ctx context.Context, workers int, input <-chan Done) <-chan Done {
-	exitGracefully := func(workers int, output chan<- Done, waitress <-chan bool) {
+func (t *Task) Run(ctx context.Context, workers int, input <-chan share.Done) <-chan share.Done {
+	exitGracefully := func(workers int, output chan<- share.Done, waitress <-chan bool) {
 		go func() {
 			for i := 0; i < workers; i++ {
 				<-waitress
@@ -56,7 +57,7 @@ func (t *Task) Run(ctx context.Context, workers int, input <-chan Done) <-chan D
 		}()
 	}
 
-	runTask := func(workers int, input <-chan Done, output chan<- Done) <-chan bool {
+	runTask := func(workers int, input <-chan share.Done, output chan<- share.Done) <-chan bool {
 		waitress := make(chan bool, workers)
 		for i := 0; i < workers; i++ {
 			go func() {
@@ -69,7 +70,7 @@ func (t *Task) Run(ctx context.Context, workers int, input <-chan Done) <-chan D
 
 	t.logger.Debug(fmt.Sprintf("\n   ⬨ Task - %s\n"+
 		"      ⬨ Workers    %d\n", t.name, workers))
-	output := make(chan Done, workers)
+	output := make(chan share.Done, workers)
 	exitGracefully(workers, output, runTask(workers, input, output))
 	return output
 }

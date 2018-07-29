@@ -1,29 +1,28 @@
-package job
+package feeder
 
 import (
 	"context"
 	"fmt"
+	"strings"
 	"sync"
 
-	"strings"
-
 	"github.com/samwooo/bolsa/common"
-	"github.com/samwooo/bolsa/common/logging"
+	"github.com/samwooo/bolsa/common/job/share"
 )
 
 //////////////////////
 // Data Feeder IMP //
-type dataFeeder struct {
+type dataFeederImp struct {
 	initial []interface{}
 	shift   sync.Map
 	batch   int
-	batchStrategy
+	share.BatchStrategy
 }
 
-func (df *dataFeeder) pump(ch chan Done) error {
+func (df *dataFeederImp) pump(ch chan share.Done) error {
 	var errs []string
 	df.shift.Range(func(key, value interface{}) bool {
-		if d, ok := value.(Done); ok {
+		if d, ok := value.(share.Done); ok {
 			ch <- d
 		} else {
 			errs = append(errs, fmt.Sprintf("✗ cast error ( %+v => %+v )", key, value))
@@ -33,17 +32,17 @@ func (df *dataFeeder) pump(ch chan Done) error {
 	})
 	return common.ErrorFromString(strings.Join(errs, " | "))
 }
-func (df *dataFeeder) name() string              { return fmt.Sprintf("data") }
-func (df *dataFeeder) doInit(ch chan Done) error { return df.doPush(ch, df.initial) }
-func (df *dataFeeder) doWork(ch chan Done) error { return df.pump(ch) }
-func (df *dataFeeder) doExit(ch chan Done) error { return df.pump(ch) }
-func (df *dataFeeder) doRetry(ch chan Done, d Done) error {
+func (df *dataFeederImp) name() string                    { return fmt.Sprintf("data") }
+func (df *dataFeederImp) doInit(ch chan share.Done) error { return df.doPush(ch, df.initial) }
+func (df *dataFeederImp) doWork(ch chan share.Done) error { return df.pump(ch) }
+func (df *dataFeederImp) doExit(ch chan share.Done) error { return df.pump(ch) }
+func (df *dataFeederImp) doRetry(ch chan share.Done, d share.Done) error {
 	df.shift.Store(d.String(), d)
 	return nil
 }
-func (df *dataFeeder) doPush(ch chan Done, data interface{}) error {
+func (df *dataFeederImp) doPush(ch chan share.Done, data interface{}) error {
 	store := func(d interface{}) {
-		done := NewDone(nil, d, nil, 0, d, KeyFrom(d))
+		done := share.NewDone(nil, d, nil, 0, d, share.KeyFrom(d))
 		df.shift.Store(done.String(), done)
 	}
 	// no batch
@@ -78,11 +77,9 @@ func (df *dataFeeder) doPush(ch chan Done, data interface{}) error {
 	}
 	return nil
 }
-func (df *dataFeeder) Batch() int { return df.batch }
-func NewDataFeeder(ctx context.Context, logger logging.Logger, data []interface{}, batch int,
-	RIPRightAfterInit bool) *Feeder {
-
-	df := dataFeeder{data, sync.Map{}, batch, nil}
-	df.batchStrategy = &df
-	return newFeeder(ctx, logger, RIPRightAfterInit, &df)
+func (df *dataFeederImp) Batch() int { return df.batch }
+func newDataFeederImp(ctx context.Context, data []interface{}, batch int, RIPRightAfterInit bool) feederImp {
+	df := dataFeederImp{data, sync.Map{}, batch, nil}
+	df.BatchStrategy = &df
+	return &df
 }

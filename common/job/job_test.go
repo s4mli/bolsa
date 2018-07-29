@@ -8,9 +8,13 @@ import (
 	"time"
 
 	"github.com/samwooo/bolsa/common"
+	"github.com/samwooo/bolsa/common/job/feeder"
+	"github.com/samwooo/bolsa/common/job/share"
 	"github.com/samwooo/bolsa/common/logging"
 	"github.com/stretchr/testify/assert"
 )
+
+var _ = logging.DefaultLogger("", logging.LogLevelFromString("ERROR"), 100)
 
 type laborWithError struct{}
 
@@ -29,11 +33,11 @@ type JobTester struct {
 	maxRetry int
 }
 
-func (*JobTester) Worth(d Done) bool { return d.E != nil }
-func (jt *JobTester) Limit() int     { return jt.maxRetry }
-func (jt *JobTester) OnError(Done)   {}
-func newJobTester(as laborStrategy, with []interface{}, batch, maxRetry int) *JobTester {
-	f := NewDataFeeder(context.Background(), logging.GetLogger(""), with, batch, false)
+func (*JobTester) Worth(d share.Done) bool { return d.E != nil }
+func (jt *JobTester) Limit() int           { return jt.maxRetry }
+func (jt *JobTester) OnError(share.Done)   {}
+func newJobTester(as share.LaborStrategy, with []interface{}, batch, maxRetry int) *JobTester {
+	f := feeder.NewDataFeeder(context.Background(), logging.GetLogger(""), with, batch, false)
 	jt := &JobTester{NewJob(logging.GetLogger(""), "",
 		runtime.NumCPU(), f), maxRetry}
 	jt.LaborStrategy(as).RetryStrategy(jt).ErrorStrategy(jt)
@@ -47,7 +51,7 @@ func TestJobWithNoLaborNoRetry(t *testing.T) {
 	r := jt.Run(context.Background())
 	count := 0
 	r.Range(func(key, value interface{}) bool {
-		done, ok := value.(Done)
+		done, ok := value.(share.Done)
 		assert.Equal(t, true, ok)
 		assert.Equal(t, true, common.IsIn(done.D, with))
 		assert.Equal(t, true, common.IsIn(done.R, with))
@@ -65,7 +69,7 @@ func TestJobWithNoLaborButRetry(t *testing.T) {
 	r := jt.Run(context.Background())
 	count := 0
 	r.Range(func(key, value interface{}) bool {
-		done, ok := value.(Done)
+		done, ok := value.(share.Done)
 		assert.Equal(t, true, ok)
 		assert.Equal(t, true, common.IsIn(done.D, with))
 		assert.Equal(t, true, common.IsIn(done.R, with))
@@ -83,7 +87,7 @@ func TestJobWithLaborErrorNoRetry(t *testing.T) {
 	r := jt.Run(context.Background())
 	count := 0
 	r.Range(func(key, value interface{}) bool {
-		done, ok := value.(Done)
+		done, ok := value.(share.Done)
 		assert.Equal(t, true, ok)
 		assert.Equal(t, true, common.IsIn(done.D, with))
 		assert.Equal(t, true, common.IsIn(done.P, with))
@@ -101,7 +105,7 @@ func TestJobWithLaborErrorButRetry(t *testing.T) {
 	r := jt.Run(context.Background())
 	count := 0
 	r.Range(func(key, value interface{}) bool {
-		done, ok := value.(Done)
+		done, ok := value.(share.Done)
 		assert.Equal(t, true, ok)
 		assert.Equal(t, true, common.IsIn(done.D, with))
 		assert.Equal(t, true, common.IsIn(done.P, with))
@@ -119,7 +123,7 @@ func TestJobWithLaborNoRetry(t *testing.T) {
 	r := jt.Run(context.Background())
 	count := 0
 	r.Range(func(key, value interface{}) bool {
-		done, ok := value.(Done)
+		done, ok := value.(share.Done)
 		assert.Equal(t, true, ok)
 		assert.Equal(t, true, common.IsIn(done.D, with))
 		assert.Equal(t, true, common.IsIn(done.R, with))
@@ -137,7 +141,7 @@ func TestJobWithLaborAndRetry(t *testing.T) {
 	r := jt.Run(context.Background())
 	count := 0
 	r.Range(func(key, value interface{}) bool {
-		done, ok := value.(Done)
+		done, ok := value.(share.Done)
 		assert.Equal(t, true, ok)
 		assert.Equal(t, true, common.IsIn(done.D, with))
 		assert.Equal(t, true, common.IsIn(done.R, with))
@@ -160,14 +164,14 @@ func (jt *JobTester) Work(ctx context.Context, p interface{}) (r interface{}, e 
 
 func TestJobItselfWithRetry(t *testing.T) {
 	with := []interface{}{1, 2, 3, 4, 5, 6, 7, 8}
-	f := NewDataFeeder(context.Background(), logging.GetLogger(""), with, 1, false)
+	f := feeder.NewDataFeeder(context.Background(), logging.GetLogger(""), with, 1, false)
 	jt := &JobTester{NewJob(logging.GetLogger(""), "", runtime.NumCPU(), f), 3}
 	jt.LaborStrategy(jt).RetryStrategy(jt).ErrorStrategy(jt)
 	time.AfterFunc(time.Duration(time.Millisecond*time.Duration(len(with)*100)), func() { f.Close() })
 	r := jt.Run(context.Background())
 	count := 0
 	r.Range(func(key, value interface{}) bool {
-		done, ok := value.(Done)
+		done, ok := value.(share.Done)
 		assert.Equal(t, true, ok)
 		assert.Equal(t, true, common.IsIn(done.D, with))
 		if done.E != nil {
@@ -190,18 +194,18 @@ func TestJobItselfWithRetry(t *testing.T) {
 
 type retryHook struct{}
 
-func (rh *retryHook) Worth(Done) bool { return false }
-func (rh *retryHook) Limit() int      { return 3 }
+func (rh *retryHook) Worth(share.Done) bool { return false }
+func (rh *retryHook) Limit() int            { return 3 }
 func TestJobItselfWithNoRetry(t *testing.T) {
 	with := []interface{}{1, 2, 3, 4, 5, 6, 7, 8}
-	f := NewDataFeeder(context.Background(), logging.GetLogger(""), with, 1, false)
+	f := feeder.NewDataFeeder(context.Background(), logging.GetLogger(""), with, 1, false)
 	jt := &JobTester{NewJob(logging.GetLogger(""), "", runtime.NumCPU(), f), 3}
 	jt.LaborStrategy(jt).RetryStrategy(&retryHook{}).ErrorStrategy(jt)
 	time.AfterFunc(time.Duration(time.Millisecond*time.Duration(len(with)*100)), func() { f.Close() })
 	r := jt.Run(context.Background())
 	count := 0
 	r.Range(func(key, value interface{}) bool {
-		done, ok := value.(Done)
+		done, ok := value.(share.Done)
 		assert.Equal(t, true, ok)
 		assert.Equal(t, true, common.IsIn(done.D, with))
 		if done.E != nil {
@@ -227,15 +231,15 @@ type blindlyRetryJob struct {
 	maxRetry int
 }
 
-func (bj *blindlyRetryJob) Worth(Done) bool { return true }
-func (bj *blindlyRetryJob) Limit() int      { return bj.maxRetry }
+func (bj *blindlyRetryJob) Worth(share.Done) bool { return true }
+func (bj *blindlyRetryJob) Limit() int            { return bj.maxRetry }
 func (bj *blindlyRetryJob) Work(ctx context.Context, p interface{}) (r interface{}, e error) {
 	return p, fmt.Errorf("|")
 }
 
 func TestBlindlyRetryJob(t *testing.T) {
 	with := []interface{}{"blindlyRetryJob"}
-	f := NewDataFeeder(context.Background(), logging.GetLogger(""), with, 1, false)
+	f := feeder.NewDataFeeder(context.Background(), logging.GetLogger(""), with, 1, false)
 	brj := &blindlyRetryJob{NewJob(logging.GetLogger(""), "", runtime.NumCPU(),
 		f), 3}
 	brj.LaborStrategy(brj).RetryStrategy(brj)
@@ -243,12 +247,12 @@ func TestBlindlyRetryJob(t *testing.T) {
 	r := brj.Run(context.Background())
 	count := 0
 	r.Range(func(key, value interface{}) bool {
-		done, ok := value.(Done)
+		done, ok := value.(share.Done)
 		assert.Equal(t, true, ok)
 		assert.Equal(t, true, common.IsIn(done.D, with))
 		assert.Equal(t, true, common.IsIn(done.P, with))
 		assert.Equal(t, true, common.IsIn(done.R, with))
-		assert.Equal(t, 3, done.retries)
+		assert.Equal(t, 3, done.Retries)
 		count++
 		return true
 	})

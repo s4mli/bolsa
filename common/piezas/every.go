@@ -5,6 +5,8 @@ import (
 	"time"
 
 	"github.com/samwooo/bolsa/common/job"
+	"github.com/samwooo/bolsa/common/job/feeder"
+	"github.com/samwooo/bolsa/common/job/share"
 	"github.com/samwooo/bolsa/common/logging"
 )
 
@@ -25,13 +27,13 @@ func Every(ctx context.Context, logger logging.Logger, data []interface{},
 	iterator func(interface{}) (bool, error)) bool {
 
 	start := time.Now()
-	f := job.NewDataFeeder(ctx, logger, data, 1, true)
+	f := feeder.NewDataFeeder(ctx, logger, data, 1, true)
 	e := &everyJ{job.NewJob(logger, "every", 0, f), iterator}
 	r := e.LaborStrategy(e).Run(ctx)
 	e.Logger.Infof("done in %+v with %+v", time.Since(start), r)
 	pass := true
 	r.Range(func(key, value interface{}) bool {
-		if d, ok := value.(job.Done); ok {
+		if d, ok := value.(share.Done); ok {
 			if d.E != nil {
 				pass = false
 				return false

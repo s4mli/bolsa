@@ -1,4 +1,4 @@
-package job
+package task
 
 import (
 	"context"
@@ -7,9 +7,13 @@ import (
 	"time"
 
 	"github.com/samwooo/bolsa/common"
+	"github.com/samwooo/bolsa/common/job/feeder"
+	"github.com/samwooo/bolsa/common/job/share"
 	"github.com/samwooo/bolsa/common/logging"
 	"github.com/stretchr/testify/assert"
 )
+
+var _ = logging.DefaultLogger("", logging.LogLevelFromString("ERROR"), 100)
 
 func testWithNWorker(t *testing.T, workers int, noDrama, usingContext bool) {
 	data := []interface{}{0, 1, 2, 3, 4, 5, 6, 7, 8, 9}
@@ -20,13 +24,13 @@ func testWithNWorker(t *testing.T, workers int, noDrama, usingContext bool) {
 			time.Duration(len(data)*20)*time.Millisecond))
 		defer cancelFn()
 	}
-	f := NewDataFeeder(ctx, logging.GetLogger(""), data, 1, noDrama)
+	f := feeder.NewDataFeeder(ctx, logging.GetLogger(""), data, 1, noDrama)
 	if !usingContext {
 		time.AfterFunc(time.Duration(len(data)*20)*time.Millisecond, func() { f.Close() })
 	}
 	output := NewTask(logging.GetLogger(""), "",
-		func(ctx context.Context, d Done) (Done, bool) {
-			return NewDone(nil, d.P, nil, 0, d.D, d.Key), true
+		func(ctx context.Context, d share.Done) (share.Done, bool) {
+			return share.NewDone(nil, d.P, nil, 0, d.D, d.Key), true
 		}).Run(context.Background(), workers, f.Adapt())
 
 	for d := range output {
