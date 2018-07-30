@@ -46,6 +46,6 @@ func (cf *chanFeederImp) doPush(ch chan share.Done, data interface{}) error {
 	}
 	return nil
 }
-func newChanFeederImp(ctx context.Context, labor labor) feederImp {
+func newChanFeederImp(ctx context.Context, labor share.Labor) feederImp {
 	return &chanFeederImp{ctx, labor}
 }
