@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/samwooo/bolsa/common/job/share"
+	"github.com/samwooo/bolsa/common/job/model"
 	"github.com/samwooo/bolsa/common/logging"
 	"github.com/stretchr/testify/assert"
 )
@@ -23,7 +23,7 @@ func TestEach(t *testing.T) {
 			}
 		})
 	r.Range(func(key, value interface{}) bool {
-		done, ok := value.(share.Done)
+		done, ok := value.(model.Done)
 		assert.Equal(t, true, ok)
 		if done.E != nil {
 			assert.Equal(t, "✗ labor failed ( abc, cast error )", done.E.Error())

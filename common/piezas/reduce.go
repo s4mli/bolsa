@@ -9,7 +9,7 @@ import (
 	"github.com/samwooo/bolsa/common"
 	"github.com/samwooo/bolsa/common/job"
 	"github.com/samwooo/bolsa/common/job/feeder"
-	"github.com/samwooo/bolsa/common/job/share"
+	"github.com/samwooo/bolsa/common/job/model"
 	"github.com/samwooo/bolsa/common/logging"
 )
 
@@ -47,7 +47,7 @@ func Reduce(ctx context.Context, logger logging.Logger, data []interface{}, memo
 	r := reduce.LaborStrategy(reduce).Run(ctx)
 	reduce.Logger.Infof("done in %+v with %+v", time.Since(start), r)
 	r.Range(func(key, value interface{}) bool {
-		if d, ok := value.(share.Done); ok {
+		if d, ok := value.(model.Done); ok {
 			m, e = d.R, d.E
 			return false
 		} else {

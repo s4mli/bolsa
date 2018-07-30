@@ -1,4 +1,4 @@
-package feeder
+package imp
 
 import (
 	"fmt"
@@ -6,7 +6,7 @@ import (
 	"sync"
 
 	"github.com/samwooo/bolsa/common"
-	"github.com/samwooo/bolsa/common/job/share"
+	"github.com/samwooo/bolsa/common/job/model"
 )
 
 //////////////////////
@@ -17,10 +17,10 @@ type dataFeederImp struct {
 	batch   int
 }
 
-func (df *dataFeederImp) pump(ch chan share.Done) error {
+func (df *dataFeederImp) pump(ch chan model.Done) error {
 	var errs []string
 	df.shift.Range(func(key, value interface{}) bool {
-		if d, ok := value.(share.Done); ok {
+		if d, ok := value.(model.Done); ok {
 			ch <- d
 		} else {
 			errs = append(errs, fmt.Sprintf("✗ cast error ( %+v => %+v )", key, value))
@@ -30,17 +30,17 @@ func (df *dataFeederImp) pump(ch chan share.Done) error {
 	})
 	return common.ErrorFromString(strings.Join(errs, " | "))
 }
-func (df *dataFeederImp) name() string                    { return fmt.Sprintf("data") }
-func (df *dataFeederImp) doInit(ch chan share.Done) error { return df.doPush(ch, df.initial) }
-func (df *dataFeederImp) doWork(ch chan share.Done) error { return df.pump(ch) }
-func (df *dataFeederImp) doExit(ch chan share.Done) error { return df.pump(ch) }
-func (df *dataFeederImp) doRetry(ch chan share.Done, d share.Done) error {
+func (df *dataFeederImp) Name() string                    { return fmt.Sprintf("data") }
+func (df *dataFeederImp) DoInit(ch chan model.Done) error { return df.DoPush(ch, df.initial) }
+func (df *dataFeederImp) DoWork(ch chan model.Done) error { return df.pump(ch) }
+func (df *dataFeederImp) DoExit(ch chan model.Done) error { return df.pump(ch) }
+func (df *dataFeederImp) DoRetry(ch chan model.Done, d model.Done) error {
 	df.shift.Store(d.String(), d)
 	return nil
 }
-func (df *dataFeederImp) doPush(ch chan share.Done, data interface{}) error {
+func (df *dataFeederImp) DoPush(ch chan model.Done, data interface{}) error {
 	store := func(d interface{}) {
-		done := share.NewDone(nil, d, nil, 0, d, share.KeyFrom(d))
+		done := model.NewDone(nil, d, nil, 0, d, model.KeyFrom(d))
 		df.shift.Store(done.String(), done)
 	}
 	// no batch
@@ -75,7 +75,7 @@ func (df *dataFeederImp) doPush(ch chan share.Done, data interface{}) error {
 	}
 	return nil
 }
-func newDataFeederImp(data []interface{}, batch int) feederImp {
+func NewDataFeederImp(data []interface{}, batch int) *dataFeederImp {
 	df := dataFeederImp{data, sync.Map{}, batch}
 	return &df
 }

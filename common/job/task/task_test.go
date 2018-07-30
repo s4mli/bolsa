@@ -8,7 +8,7 @@ import (
 
 	"github.com/samwooo/bolsa/common"
 	"github.com/samwooo/bolsa/common/job/feeder"
-	"github.com/samwooo/bolsa/common/job/share"
+	"github.com/samwooo/bolsa/common/job/model"
 	"github.com/samwooo/bolsa/common/logging"
 	"github.com/stretchr/testify/assert"
 )
@@ -29,8 +29,8 @@ func testWithNWorker(t *testing.T, workers int, noDrama, usingContext bool) {
 		time.AfterFunc(time.Duration(len(data)*20)*time.Millisecond, func() { f.Close() })
 	}
 	output := NewTask(logging.GetLogger(""), "",
-		func(ctx context.Context, d share.Done) (share.Done, bool) {
-			return share.NewDone(nil, d.P, nil, 0, d.D, d.Key), true
+		func(ctx context.Context, d model.Done) (model.Done, bool) {
+			return model.NewDone(nil, d.P, nil, 0, d.D, d.Key), true
 		}).Run(context.Background(), workers, f.Adapt())
 
 	for d := range output {

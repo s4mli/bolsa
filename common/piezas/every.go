@@ -6,7 +6,7 @@ import (
 
 	"github.com/samwooo/bolsa/common/job"
 	"github.com/samwooo/bolsa/common/job/feeder"
-	"github.com/samwooo/bolsa/common/job/share"
+	"github.com/samwooo/bolsa/common/job/model"
 	"github.com/samwooo/bolsa/common/logging"
 )
 
@@ -33,7 +33,7 @@ func Every(ctx context.Context, logger logging.Logger, data []interface{},
 	e.Logger.Infof("done in %+v with %+v", time.Since(start), r)
 	pass := true
 	r.Range(func(key, value interface{}) bool {
-		if d, ok := value.(share.Done); ok {
+		if d, ok := value.(model.Done); ok {
 			if d.E != nil {
 				pass = false
 				return false

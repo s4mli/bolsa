@@ -5,22 +5,22 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/samwooo/bolsa/common/job/share"
+	"github.com/samwooo/bolsa/common/job/model"
 	"github.com/samwooo/bolsa/common/logging"
 )
 
 ///////////
 // Task //
-type task func(ctx context.Context, d share.Done) (result share.Done, ok bool)
+type task func(ctx context.Context, d model.Done) (result model.Done, ok bool)
 type Task struct {
 	logger logging.Logger
 	name   string
 	task   task
 }
 
-func (t *Task) run(ctx context.Context, input <-chan share.Done, output chan<- share.Done) {
-	apply := func(d share.Done, output chan<- share.Done) {
-		if r, ok := t.task(ctx, share.NewDone(d.R, nil, d.E, d.Retries, d.D, d.Key)); ok {
+func (t *Task) run(ctx context.Context, input <-chan model.Done, output chan<- model.Done) {
+	apply := func(d model.Done, output chan<- model.Done) {
+		if r, ok := t.task(ctx, model.NewDone(d.R, nil, d.E, d.Retries, d.D, d.Key)); ok {
 			t.logger.Debugf("✔ task %s done ( %+v )", t.name, r)
 			output <- r
 		} else {
@@ -47,8 +47,8 @@ func (t *Task) run(ctx context.Context, input <-chan share.Done, output chan<- s
 	}
 }
 
-func (t *Task) Run(ctx context.Context, workers int, input <-chan share.Done) <-chan share.Done {
-	exitGracefully := func(workers int, output chan<- share.Done, waitress <-chan bool) {
+func (t *Task) Run(ctx context.Context, workers int, input <-chan model.Done) <-chan model.Done {
+	exitGracefully := func(workers int, output chan<- model.Done, waitress <-chan bool) {
 		go func() {
 			for i := 0; i < workers; i++ {
 				<-waitress
@@ -57,7 +57,7 @@ func (t *Task) Run(ctx context.Context, workers int, input <-chan share.Done) <-
 		}()
 	}
 
-	runTask := func(workers int, input <-chan share.Done, output chan<- share.Done) <-chan bool {
+	runTask := func(workers int, input <-chan model.Done, output chan<- model.Done) <-chan bool {
 		waitress := make(chan bool, workers)
 		for i := 0; i < workers; i++ {
 			go func() {
@@ -70,7 +70,7 @@ func (t *Task) Run(ctx context.Context, workers int, input <-chan share.Done) <-
 
 	t.logger.Debug(fmt.Sprintf("\n   ⬨ Task - %s\n"+
 		"      ⬨ Workers    %d\n", t.name, workers))
-	output := make(chan share.Done, workers)
+	output := make(chan model.Done, workers)
 	exitGracefully(workers, output, runTask(workers, input, output))
 	return output
 }

@@ -9,7 +9,7 @@ import (
 
 	"github.com/samwooo/bolsa/common"
 	"github.com/samwooo/bolsa/common/job/feeder"
-	"github.com/samwooo/bolsa/common/job/share"
+	"github.com/samwooo/bolsa/common/job/model"
 	"github.com/samwooo/bolsa/common/logging"
 	"github.com/stretchr/testify/assert"
 )
@@ -33,10 +33,10 @@ type JobTester struct {
 	maxRetry int
 }
 
-func (*JobTester) Worth(d share.Done) bool { return d.E != nil }
+func (*JobTester) Worth(d model.Done) bool { return d.E != nil }
 func (jt *JobTester) Limit() int           { return jt.maxRetry }
-func (jt *JobTester) OnError(share.Done)   {}
-func newJobTester(as share.LaborStrategy, with []interface{}, batch, maxRetry int) *JobTester {
+func (jt *JobTester) OnError(model.Done)   {}
+func newJobTester(as model.LaborStrategy, with []interface{}, batch, maxRetry int) *JobTester {
 	f := feeder.NewDataFeeder(context.Background(), logging.GetLogger(""), with, batch, false)
 	jt := &JobTester{NewJob(logging.GetLogger(""), "",
 		runtime.NumCPU(), f), maxRetry}
@@ -51,7 +51,7 @@ func TestJobWithNoLaborNoRetry(t *testing.T) {
 	r := jt.Run(context.Background())
 	count := 0
 	r.Range(func(key, value interface{}) bool {
-		done, ok := value.(share.Done)
+		done, ok := value.(model.Done)
 		assert.Equal(t, true, ok)
 		assert.Equal(t, true, common.IsIn(done.D, with))
 		assert.Equal(t, true, common.IsIn(done.R, with))
@@ -69,7 +69,7 @@ func TestJobWithNoLaborButRetry(t *testing.T) {
 	r := jt.Run(context.Background())
 	count := 0
 	r.Range(func(key, value interface{}) bool {
-		done, ok := value.(share.Done)
+		done, ok := value.(model.Done)
 		assert.Equal(t, true, ok)
 		assert.Equal(t, true, common.IsIn(done.D, with))
 		assert.Equal(t, true, common.IsIn(done.R, with))
@@ -87,7 +87,7 @@ func TestJobWithLaborErrorNoRetry(t *testing.T) {
 	r := jt.Run(context.Background())
 	count := 0
 	r.Range(func(key, value interface{}) bool {
-		done, ok := value.(share.Done)
+		done, ok := value.(model.Done)
 		assert.Equal(t, true, ok)
 		assert.Equal(t, true, common.IsIn(done.D, with))
 		assert.Equal(t, true, common.IsIn(done.P, with))
@@ -105,7 +105,7 @@ func TestJobWithLaborErrorButRetry(t *testing.T) {
 	r := jt.Run(context.Background())
 	count := 0
 	r.Range(func(key, value interface{}) bool {
-		done, ok := value.(share.Done)
+		done, ok := value.(model.Done)
 		assert.Equal(t, true, ok)
 		assert.Equal(t, true, common.IsIn(done.D, with))
 		assert.Equal(t, true, common.IsIn(done.P, with))
@@ -123,7 +123,7 @@ func TestJobWithLaborNoRetry(t *testing.T) {
 	r := jt.Run(context.Background())
 	count := 0
 	r.Range(func(key, value interface{}) bool {
-		done, ok := value.(share.Done)
+		done, ok := value.(model.Done)
 		assert.Equal(t, true, ok)
 		assert.Equal(t, true, common.IsIn(done.D, with))
 		assert.Equal(t, true, common.IsIn(done.R, with))
@@ -141,7 +141,7 @@ func TestJobWithLaborAndRetry(t *testing.T) {
 	r := jt.Run(context.Background())
 	count := 0
 	r.Range(func(key, value interface{}) bool {
-		done, ok := value.(share.Done)
+		done, ok := value.(model.Done)
 		assert.Equal(t, true, ok)
 		assert.Equal(t, true, common.IsIn(done.D, with))
 		assert.Equal(t, true, common.IsIn(done.R, with))
@@ -171,7 +171,7 @@ func TestJobItselfWithRetry(t *testing.T) {
 	r := jt.Run(context.Background())
 	count := 0
 	r.Range(func(key, value interface{}) bool {
-		done, ok := value.(share.Done)
+		done, ok := value.(model.Done)
 		assert.Equal(t, true, ok)
 		assert.Equal(t, true, common.IsIn(done.D, with))
 		if done.E != nil {
@@ -194,7 +194,7 @@ func TestJobItselfWithRetry(t *testing.T) {
 
 type retryHook struct{}
 
-func (rh *retryHook) Worth(share.Done) bool { return false }
+func (rh *retryHook) Worth(model.Done) bool { return false }
 func (rh *retryHook) Limit() int            { return 3 }
 func TestJobItselfWithNoRetry(t *testing.T) {
 	with := []interface{}{1, 2, 3, 4, 5, 6, 7, 8}
@@ -205,7 +205,7 @@ func TestJobItselfWithNoRetry(t *testing.T) {
 	r := jt.Run(context.Background())
 	count := 0
 	r.Range(func(key, value interface{}) bool {
-		done, ok := value.(share.Done)
+		done, ok := value.(model.Done)
 		assert.Equal(t, true, ok)
 		assert.Equal(t, true, common.IsIn(done.D, with))
 		if done.E != nil {
@@ -231,7 +231,7 @@ type blindlyRetryJob struct {
 	maxRetry int
 }
 
-func (bj *blindlyRetryJob) Worth(share.Done) bool { return true }
+func (bj *blindlyRetryJob) Worth(model.Done) bool { return true }
 func (bj *blindlyRetryJob) Limit() int            { return bj.maxRetry }
 func (bj *blindlyRetryJob) Work(ctx context.Context, p interface{}) (r interface{}, e error) {
 	return p, fmt.Errorf("|")
@@ -247,7 +247,7 @@ func TestBlindlyRetryJob(t *testing.T) {
 	r := brj.Run(context.Background())
 	count := 0
 	r.Range(func(key, value interface{}) bool {
-		done, ok := value.(share.Done)
+		done, ok := value.(model.Done)
 		assert.Equal(t, true, ok)
 		assert.Equal(t, true, common.IsIn(done.D, with))
 		assert.Equal(t, true, common.IsIn(done.P, with))

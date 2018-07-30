@@ -7,7 +7,7 @@ import (
 	"sync"
 
 	"github.com/samwooo/bolsa/common/job/feeder"
-	"github.com/samwooo/bolsa/common/job/share"
+	"github.com/samwooo/bolsa/common/job/model"
 	"github.com/samwooo/bolsa/common/job/task"
 	"github.com/samwooo/bolsa/common/logging"
 )
@@ -19,11 +19,11 @@ type Job struct {
 	name    string
 	workers int
 	feeder  *feeder.Feeder
-	labor   share.LaborStrategy
-	retry   share.RetryStrategy
+	labor   model.LaborStrategy
+	retry   model.RetryStrategy
 }
 
-func (j *Job) worthRetry(d share.Done) bool {
+func (j *Job) worthRetry(d model.Done) bool {
 	if j.retry == nil {
 		return false
 	} else {
@@ -39,28 +39,28 @@ func (j *Job) retryLimit() int {
 	}
 }
 
-func (j *Job) drain(ctx context.Context, input <-chan share.Done) <-chan share.Done {
+func (j *Job) drain(ctx context.Context, input <-chan model.Done) <-chan model.Done {
 	return task.NewTask(j.Logger, fmt.Sprintf("%s-drain", j.name),
-		func(ctx context.Context, d share.Done) (share.Done, bool) {
+		func(ctx context.Context, d model.Done) (model.Done, bool) {
 			j.Logger.Debugf("✔ job %s drain succeed ( %+v )", j.name, d)
 			// R = P for feed
-			return share.NewDone(nil, d.P, d.E, d.Retries, d.D, d.Key), true
+			return model.NewDone(nil, d.P, d.E, d.Retries, d.D, d.Key), true
 		}).Run(ctx, j.workers, input)
 }
 
-func (j *Job) chew(ctx context.Context, input <-chan share.Done) <-chan share.Done {
+func (j *Job) chew(ctx context.Context, input <-chan model.Done) <-chan model.Done {
 	type worker func(ctx context.Context, p interface{}) (r interface{}, e error)
-	chewWithLabor := func(workers int, input <-chan share.Done, work worker) <-chan share.Done {
+	chewWithLabor := func(workers int, input <-chan model.Done, work worker) <-chan model.Done {
 		return task.NewTask(j.Logger, fmt.Sprintf("%s-chew", j.name),
-			func(ctx context.Context, d share.Done) (share.Done, bool) {
+			func(ctx context.Context, d model.Done) (model.Done, bool) {
 				if data, err := work(ctx, d.P); err != nil {
 					j.Logger.Warnf("✗ job %s chew failed ( %+v, %s )", j.name, d, err.Error())
-					laborError := share.NewError(share.TypeLabor, fmt.Errorf("( %+v, %s )", d.P, err.Error()))
+					laborError := model.NewError(model.TypeLabor, fmt.Errorf("( %+v, %s )", d.P, err.Error()))
 					// P is P & R is R for digest
-					laborFailed := share.NewDone(d.P, data, laborError, d.Retries, d.D, d.Key)
+					laborFailed := model.NewDone(d.P, data, laborError, d.Retries, d.D, d.Key)
 					if j.worthRetry(laborFailed) && d.Retries < j.retryLimit() {
 						// R = P for drain
-						lr := share.NewDone(nil, d.P, laborError, d.Retries+1, d.D, d.Key)
+						lr := model.NewDone(nil, d.P, laborError, d.Retries+1, d.D, d.Key)
 						j.Logger.Warnf("✔ job %s retry chew failure ( %+v )", j.name, lr)
 						j.feeder.Retry(lr)
 						return laborFailed, laborFailed.Retries > j.retryLimit() || j.feeder.Closed()
@@ -70,7 +70,7 @@ func (j *Job) chew(ctx context.Context, input <-chan share.Done) <-chan share.Do
 				} else {
 					j.Logger.Debugf("✔ job %s chew succeed ( %+v, %+v)", j.name, d.P, data)
 					// R = P for digest
-					return share.NewDone(nil, data, nil, d.Retries, d.D, d.Key), true
+					return model.NewDone(nil, data, nil, d.Retries, d.D, d.Key), true
 				}
 			}).Run(ctx, workers, input)
 	}
@@ -84,13 +84,13 @@ func (j *Job) chew(ctx context.Context, input <-chan share.Done) <-chan share.Do
 	}
 }
 
-func (j *Job) digest(ctx context.Context, inputs ...<-chan share.Done) <-chan share.Done {
-	merge := func(inputs ...<-chan share.Done) <-chan share.Done {
+func (j *Job) digest(ctx context.Context, inputs ...<-chan model.Done) <-chan model.Done {
+	merge := func(inputs ...<-chan model.Done) <-chan model.Done {
 		var wg sync.WaitGroup
 		wg.Add(len(inputs))
-		output := make(chan share.Done)
+		output := make(chan model.Done)
 		for _, in := range inputs {
-			go func(in <-chan share.Done) {
+			go func(in <-chan model.Done) {
 				for d := range in {
 					output <- d
 				}
@@ -139,12 +139,12 @@ func (j *Job) Feeder(f *feeder.Feeder) *Job {
 	return j
 }
 
-func (j *Job) LaborStrategy(lh share.LaborStrategy) *Job {
+func (j *Job) LaborStrategy(lh model.LaborStrategy) *Job {
 	j.labor = lh
 	return j
 }
 
-func (j *Job) RetryStrategy(rh share.RetryStrategy) *Job {
+func (j *Job) RetryStrategy(rh model.RetryStrategy) *Job {
 	j.retry = rh
 	return j
 }
@@ -156,7 +156,7 @@ func (j *Job) Run(ctx context.Context) *sync.Map {
 		var result sync.Map
 		for r := range j.digest(ctx, j.chew(ctx, j.drain(ctx, j.feeder.Adapt()))) {
 			if v, existing := result.Load(r.Key); existing {
-				if d, _ := v.(share.Done); d.Retries < r.Retries {
+				if d, _ := v.(model.Done); d.Retries < r.Retries {
 					result.Store(r.Key, r)
 				}
 			} else {
