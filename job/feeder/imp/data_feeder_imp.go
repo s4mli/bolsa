@@ -6,7 +6,7 @@ import (
 	"sync"
 
 	"github.com/samwooo/bolsa/common"
-	"github.com/samwooo/bolsa/common/job/model"
+	"github.com/samwooo/bolsa/job/model"
 )
 
 //////////////////////

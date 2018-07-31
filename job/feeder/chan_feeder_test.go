@@ -8,7 +8,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/samwooo/bolsa/common/logging"
+	"github.com/samwooo/bolsa/logging"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -16,11 +16,11 @@ var _ = logging.DefaultLogger("", logging.LogLevelFromString("ERROR"), 100)
 
 var COUNTER uint64 = 0
 
-func withoutError(ctx context.Context, p interface{}) (r interface{}, e error) {
+func withoutError(p interface{}) (r interface{}, e error) {
 	return atomic.AddUint64(&COUNTER, 2), nil
 }
 
-func withError(ctx context.Context, p interface{}) (r interface{}, e error) {
+func withError(p interface{}) (r interface{}, e error) {
 	return nil, fmt.Errorf("laborError")
 }
 

@@ -4,10 +4,10 @@ import (
 	"context"
 	"time"
 
-	"github.com/samwooo/bolsa/common/job"
-	"github.com/samwooo/bolsa/common/job/feeder"
-	"github.com/samwooo/bolsa/common/job/model"
-	"github.com/samwooo/bolsa/common/logging"
+	"github.com/samwooo/bolsa/job"
+	"github.com/samwooo/bolsa/job/feeder"
+	"github.com/samwooo/bolsa/job/model"
+	"github.com/samwooo/bolsa/logging"
 )
 
 type mapJ struct {
@@ -15,7 +15,7 @@ type mapJ struct {
 	iterator func(interface{}) (interface{}, error)
 }
 
-func (myself *mapJ) Work(ctx context.Context, p interface{}) (r interface{}, e error) {
+func (myself *mapJ) Work(p interface{}) (r interface{}, e error) {
 	if myself.iterator != nil {
 		return myself.iterator(p)
 	} else {
@@ -29,7 +29,7 @@ func Map(ctx context.Context, logger logging.Logger, data []interface{},
 	start := time.Now()
 	f := feeder.NewDataFeeder(ctx, logger, data, 1, true)
 	e := &mapJ{job.NewJob(logger, "Map", 0, f), iterator}
-	r := e.LaborStrategy(e).Run(ctx)
+	r := e.SetLaborStrategy(e).Run()
 	e.Logger.Infof("done in %+v with %+v", time.Since(start), r)
 	var result []interface{}
 	r.Range(func(key, value interface{}) bool {

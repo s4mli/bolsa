@@ -5,11 +5,7 @@ import (
 	"math/rand"
 	"time"
 
-	"github.com/samwooo/bolsa/common/logging"
-)
-
-const (
-	APP_NAME = "bolsa"
+	"github.com/samwooo/bolsa/logging"
 )
 
 func ErrorFromString(s string) error {

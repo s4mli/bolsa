@@ -5,9 +5,9 @@ import (
 	"sync"
 	"time"
 
-	"github.com/samwooo/bolsa/common/job"
-	"github.com/samwooo/bolsa/common/job/feeder"
-	"github.com/samwooo/bolsa/common/logging"
+	"github.com/samwooo/bolsa/job"
+	"github.com/samwooo/bolsa/job/feeder"
+	"github.com/samwooo/bolsa/logging"
 )
 
 type eachJ struct {
@@ -15,7 +15,7 @@ type eachJ struct {
 	iterator func(interface{}) (interface{}, error)
 }
 
-func (myself *eachJ) Work(ctx context.Context, p interface{}) (r interface{}, e error) {
+func (myself *eachJ) Work(p interface{}) (r interface{}, e error) {
 	if myself.iterator != nil {
 		return myself.iterator(p)
 	} else {
@@ -28,7 +28,7 @@ func Each(ctx context.Context, logger logging.Logger, data []interface{},
 	start := time.Now()
 	f := feeder.NewDataFeeder(ctx, logger, data, 1, true)
 	e := &eachJ{job.NewJob(logger, "Each", 0, f), ite}
-	done := e.LaborStrategy(e).Run(ctx)
+	done := e.SetLaborStrategy(e).Run()
 	e.Logger.Infof("done in %+v with %+v", time.Since(start), done)
 	return done
 }

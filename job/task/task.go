@@ -1,26 +1,25 @@
 package task
 
 import (
-	"context"
 	"fmt"
 	"time"
 
-	"github.com/samwooo/bolsa/common/job/model"
-	"github.com/samwooo/bolsa/common/logging"
+	"github.com/samwooo/bolsa/job/model"
+	"github.com/samwooo/bolsa/logging"
 )
 
 ///////////
 // Task //
-type task func(ctx context.Context, d model.Done) (result model.Done, ok bool)
+type task func(d model.Done) (result model.Done, ok bool)
 type Task struct {
 	logger logging.Logger
 	name   string
 	task   task
 }
 
-func (t *Task) run(ctx context.Context, input <-chan model.Done, output chan<- model.Done) {
+func (t *Task) run(input <-chan model.Done, output chan<- model.Done) {
 	apply := func(d model.Done, output chan<- model.Done) {
-		if r, ok := t.task(ctx, model.NewDone(d.R, nil, d.E, d.Retries, d.D, d.Key)); ok {
+		if r, ok := t.task(model.NewDone(d.R, nil, d.E, d.Retries, d.D, d.Key)); ok {
 			t.logger.Debugf("✔ task %s done ( %+v )", t.name, r)
 			output <- r
 		} else {
@@ -47,7 +46,7 @@ func (t *Task) run(ctx context.Context, input <-chan model.Done, output chan<- m
 	}
 }
 
-func (t *Task) Run(ctx context.Context, workers int, input <-chan model.Done) <-chan model.Done {
+func (t *Task) Run(workers int, input <-chan model.Done) <-chan model.Done {
 	exitGracefully := func(workers int, output chan<- model.Done, waitress <-chan bool) {
 		go func() {
 			for i := 0; i < workers; i++ {
@@ -61,7 +60,7 @@ func (t *Task) Run(ctx context.Context, workers int, input <-chan model.Done) <-
 		waitress := make(chan bool, workers)
 		for i := 0; i < workers; i++ {
 			go func() {
-				t.run(ctx, input, output)
+				t.run(input, output)
 				waitress <- true
 			}()
 		}

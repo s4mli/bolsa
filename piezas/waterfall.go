@@ -5,7 +5,7 @@ import (
 	"reflect"
 	"time"
 
-	"github.com/samwooo/bolsa/common/logging"
+	"github.com/samwooo/bolsa/logging"
 )
 
 type task interface{}

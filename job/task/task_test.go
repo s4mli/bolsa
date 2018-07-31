@@ -7,9 +7,9 @@ import (
 	"time"
 
 	"github.com/samwooo/bolsa/common"
-	"github.com/samwooo/bolsa/common/job/feeder"
-	"github.com/samwooo/bolsa/common/job/model"
-	"github.com/samwooo/bolsa/common/logging"
+	"github.com/samwooo/bolsa/job/feeder"
+	"github.com/samwooo/bolsa/job/model"
+	"github.com/samwooo/bolsa/logging"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -29,9 +29,9 @@ func testWithNWorker(t *testing.T, workers int, noDrama, usingContext bool) {
 		time.AfterFunc(time.Duration(len(data)*20)*time.Millisecond, func() { f.Close() })
 	}
 	output := NewTask(logging.GetLogger(""), "",
-		func(ctx context.Context, d model.Done) (model.Done, bool) {
+		func(d model.Done) (model.Done, bool) {
 			return model.NewDone(nil, d.P, nil, 0, d.D, d.Key), true
-		}).Run(context.Background(), workers, f.Adapt())
+		}).Run(workers, f.Adapt())
 
 	for d := range output {
 		assert.Equal(t, true, common.IsIn(d.R, data))

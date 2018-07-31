@@ -10,9 +10,9 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/samwooo/bolsa/common/job/feeder/imp"
-	"github.com/samwooo/bolsa/common/job/model"
-	"github.com/samwooo/bolsa/common/logging"
+	"github.com/samwooo/bolsa/job/feeder/imp"
+	"github.com/samwooo/bolsa/job/model"
+	"github.com/samwooo/bolsa/logging"
 )
 
 /////////////////
@@ -33,37 +33,37 @@ type Feeder struct {
 	quit   chan bool
 	output chan model.Done
 	closed atomic.Value
-	imp    feederImp
+	feederImp
 }
 
 func (jf *Feeder) Adapt() chan model.Done { return jf.output }
 func (jf *Feeder) Name() string {
-	if jf.imp != nil {
-		return jf.imp.Name()
+	if jf.feederImp != nil {
+		return jf.feederImp.Name()
 	} else {
 		return fmt.Sprintf("default")
 	}
 }
 func (jf *Feeder) Retry(d model.Done) {
-	if jf.imp != nil && !jf.Closed() {
-		if err := jf.imp.DoRetry(jf.output, d); err != nil {
+	if jf.feederImp != nil && !jf.Closed() {
+		if err := jf.feederImp.DoRetry(jf.output, d); err != nil {
 			jf.logger.Warnf("✗ feeder %s retry failed ( %s )", jf.Name(), err.Error())
 		} else {
 			jf.logger.Debugf("✗ feeder %s retry ( %+v )", jf.Name(), d)
 		}
 	} else {
-		jf.logger.Warnf("✗ feeder %s retry skipped, channel closed ?", jf.Name())
+		jf.logger.Debugf("✗ feeder %s retry skipped, channel closed ?", jf.Name())
 	}
 }
 func (jf *Feeder) Push(data interface{}) {
-	if jf.imp != nil && !jf.Closed() {
-		if err := jf.imp.DoPush(jf.output, data); err != nil {
+	if jf.feederImp != nil && !jf.Closed() {
+		if err := jf.feederImp.DoPush(jf.output, data); err != nil {
 			jf.logger.Warnf("✗ feeder %s push failed ( %s )", jf.Name(), err.Error())
 		} else {
 			jf.logger.Debugf("✗ feeder %s push ( %+v )", jf.Name(), data)
 		}
 	} else {
-		jf.logger.Warnf("✗ feeder %s push skipped, channel closed ?", jf.Name())
+		jf.logger.Debugf("✗ feeder %s push skipped, channel closed ?", jf.Name())
 	}
 }
 func (jf *Feeder) Close() {
@@ -107,14 +107,14 @@ func newFeeder(ctx context.Context, logger logging.Logger, RIPRightAfterInit boo
 	}()
 
 	go func() {
-		if jf.imp != nil && !jf.Closed() {
-			if err := jf.imp.DoInit(jf.output); err != nil {
+		if jf.feederImp != nil && !jf.Closed() {
+			if err := jf.feederImp.DoInit(jf.output); err != nil {
 				jf.logger.Warnf("✗ feeder %s init failed ( %s )", jf.Name(), err.Error())
 			} else {
 				jf.logger.Debugf("✗ feeder %s init succeed", jf.Name())
 			}
 		} else {
-			jf.logger.Warnf("✗ feeder %s init skipped, channel closed ?", jf.Name())
+			jf.logger.Debugf("✗ feeder %s init skipped, channel closed ?", jf.Name())
 		}
 		if RIPRightAfterInit {
 			jf.Close()
@@ -124,23 +124,23 @@ func newFeeder(ctx context.Context, logger logging.Logger, RIPRightAfterInit boo
 		for {
 			select {
 			case <-jf.quit:
-				if jf.imp != nil && !jf.Closed() {
-					if err := jf.imp.DoExit(jf.output); err != nil {
+				if jf.feederImp != nil && !jf.Closed() {
+					if err := jf.feederImp.DoExit(jf.output); err != nil {
 						jf.logger.Warnf("✗ feeder %s exit failed ( %s )", jf.Name(), err.Error())
 					}
 				} else {
-					jf.logger.Warnf("✗ feeder %s exit skipped, channel closed ?", jf.Name())
+					jf.logger.Debugf("✗ feeder %s exit skipped, channel closed ?", jf.Name())
 				}
 				close(jf.output)
 				jf.closed.Store(true)
 				return
 			default:
-				if jf.imp != nil && !jf.Closed() {
-					if err := jf.imp.DoWork(jf.output); err != nil {
+				if jf.feederImp != nil && !jf.Closed() {
+					if err := jf.feederImp.DoWork(jf.output); err != nil {
 						jf.logger.Warnf("✗ feeder %s work failed ( %s )", jf.Name(), err.Error())
 					}
 				} else {
-					jf.logger.Warnf("✗ feeder %s work skipped, channel closed ?", jf.Name())
+					jf.logger.Debugf("✗ feeder %s work skipped, channel closed ?", jf.Name())
 					time.Sleep(time.Millisecond * 5)
 				}
 			}
@@ -151,7 +151,7 @@ func newFeeder(ctx context.Context, logger logging.Logger, RIPRightAfterInit boo
 }
 
 func NewChanFeeder(ctx context.Context, logger logging.Logger, labor model.Labor) *Feeder {
-	return newFeeder(ctx, logger, false, imp.NewChanFeederImp(ctx, labor))
+	return newFeeder(ctx, logger, false, imp.NewChanFeederImp(labor))
 }
 
 func NewDataFeeder(ctx context.Context, logger logging.Logger, data []interface{}, batch int,

@@ -6,7 +6,7 @@ import (
 	"testing"
 
 	"github.com/samwooo/bolsa/common"
-	"github.com/samwooo/bolsa/common/logging"
+	"github.com/samwooo/bolsa/logging"
 	"github.com/stretchr/testify/assert"
 )
 

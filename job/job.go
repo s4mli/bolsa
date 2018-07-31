@@ -1,15 +1,14 @@
 package job
 
 import (
-	"context"
 	"fmt"
 	"runtime"
 	"sync"
 
-	"github.com/samwooo/bolsa/common/job/feeder"
-	"github.com/samwooo/bolsa/common/job/model"
-	"github.com/samwooo/bolsa/common/job/task"
-	"github.com/samwooo/bolsa/common/logging"
+	"github.com/samwooo/bolsa/job/feeder"
+	"github.com/samwooo/bolsa/job/model"
+	"github.com/samwooo/bolsa/job/task"
+	"github.com/samwooo/bolsa/logging"
 )
 
 //////////
@@ -18,42 +17,42 @@ type Job struct {
 	Logger  logging.Logger
 	name    string
 	workers int
-	feeder  *feeder.Feeder
-	labor   model.LaborStrategy
-	retry   model.RetryStrategy
+	*feeder.Feeder
+	model.LaborStrategy
+	model.RetryStrategy
 }
 
 func (j *Job) worthRetry(d model.Done) bool {
-	if j.retry == nil {
+	if j.RetryStrategy == nil {
 		return false
 	} else {
-		return j.retry.Worth(d)
+		return j.RetryStrategy.Worth(d)
 	}
 }
 
 func (j *Job) retryLimit() int {
-	if j.retry == nil || j.retry.Limit() < 1 {
+	if j.RetryStrategy == nil || j.RetryStrategy.Limit() < 1 {
 		return 0
 	} else {
-		return j.retry.Limit()
+		return j.RetryStrategy.Limit()
 	}
 }
 
-func (j *Job) drain(ctx context.Context, input <-chan model.Done) <-chan model.Done {
+func (j *Job) drain(input <-chan model.Done) <-chan model.Done {
 	return task.NewTask(j.Logger, fmt.Sprintf("%s-drain", j.name),
-		func(ctx context.Context, d model.Done) (model.Done, bool) {
+		func(d model.Done) (model.Done, bool) {
 			j.Logger.Debugf("✔ job %s drain succeed ( %+v )", j.name, d)
 			// R = P for feed
 			return model.NewDone(nil, d.P, d.E, d.Retries, d.D, d.Key), true
-		}).Run(ctx, j.workers, input)
+		}).Run(j.workers, input)
 }
 
-func (j *Job) chew(ctx context.Context, input <-chan model.Done) <-chan model.Done {
-	type worker func(ctx context.Context, p interface{}) (r interface{}, e error)
+func (j *Job) chew(input <-chan model.Done) <-chan model.Done {
+	type worker func(p interface{}) (r interface{}, e error)
 	chewWithLabor := func(workers int, input <-chan model.Done, work worker) <-chan model.Done {
 		return task.NewTask(j.Logger, fmt.Sprintf("%s-chew", j.name),
-			func(ctx context.Context, d model.Done) (model.Done, bool) {
-				if data, err := work(ctx, d.P); err != nil {
+			func(d model.Done) (model.Done, bool) {
+				if data, err := work(d.P); err != nil {
 					j.Logger.Warnf("✗ job %s chew failed ( %+v, %s )", j.name, d, err.Error())
 					laborError := model.NewError(model.TypeLabor, fmt.Errorf("( %+v, %s )", d.P, err.Error()))
 					// P is P & R is R for digest
@@ -61,9 +60,9 @@ func (j *Job) chew(ctx context.Context, input <-chan model.Done) <-chan model.Do
 					if j.worthRetry(laborFailed) && d.Retries < j.retryLimit() {
 						// R = P for drain
 						lr := model.NewDone(nil, d.P, laborError, d.Retries+1, d.D, d.Key)
-						j.Logger.Warnf("✔ job %s retry chew failure ( %+v )", j.name, lr)
-						j.feeder.Retry(lr)
-						return laborFailed, laborFailed.Retries > j.retryLimit() || j.feeder.Closed()
+						j.Logger.Warnf("✔ job %s RetryStrategy chew failure ( %+v )", j.name, lr)
+						j.Feeder.Retry(lr)
+						return laborFailed, laborFailed.Retries > j.retryLimit() || j.Feeder.Closed()
 					} else {
 						return laborFailed, true
 					}
@@ -72,19 +71,19 @@ func (j *Job) chew(ctx context.Context, input <-chan model.Done) <-chan model.Do
 					// R = P for digest
 					return model.NewDone(nil, data, nil, d.Retries, d.D, d.Key), true
 				}
-			}).Run(ctx, workers, input)
+			}).Run(workers, input)
 	}
-	if j.labor != nil {
-		return chewWithLabor(j.workers, input, j.labor.Work)
+	if j.LaborStrategy != nil {
+		return chewWithLabor(j.workers, input, j.LaborStrategy.Work)
 	} else {
 		return chewWithLabor(j.workers, input,
-			func(ctx context.Context, para interface{}) (interface{}, error) {
+			func(para interface{}) (interface{}, error) {
 				return para, nil
 			})
 	}
 }
 
-func (j *Job) digest(ctx context.Context, inputs ...<-chan model.Done) <-chan model.Done {
+func (j *Job) digest(inputs ...<-chan model.Done) <-chan model.Done {
 	merge := func(inputs ...<-chan model.Done) <-chan model.Done {
 		var wg sync.WaitGroup
 		wg.Add(len(inputs))
@@ -114,19 +113,19 @@ func (j *Job) description() string {
 			"      ⬨ LaborStrategy   %s\n"+
 			"      ⬨ RetryStrategy   %s\n",
 		j.name,
-		j.feeder.Name(),
+		j.Feeder.Name(),
 		j.workers,
 
 		func() string {
-			if j.labor != nil {
+			if j.LaborStrategy != nil {
 				return "✔"
 			} else {
 				return "✗"
 			}
 		}(),
 		func() string {
-			if j.retry != nil {
-				return fmt.Sprintf("✔ ( %d )", j.retry.Limit())
+			if j.RetryStrategy != nil {
+				return fmt.Sprintf("✔ ( %d )", j.RetryStrategy.Limit())
 			} else {
 				return "✗"
 			}
@@ -134,44 +133,54 @@ func (j *Job) description() string {
 	)
 }
 
-func (j *Job) Feeder(f *feeder.Feeder) *Job {
-	j.feeder = f
+func (j *Job) SetFeeder(f *feeder.Feeder) *Job {
+	j.Feeder = f
 	return j
 }
 
-func (j *Job) LaborStrategy(lh model.LaborStrategy) *Job {
-	j.labor = lh
+func (j *Job) SetLaborStrategy(lh model.LaborStrategy) *Job {
+	j.LaborStrategy = lh
 	return j
 }
 
-func (j *Job) RetryStrategy(rh model.RetryStrategy) *Job {
-	j.retry = rh
+func (j *Job) SetRetryStrategy(rh model.RetryStrategy) *Job {
+	j.RetryStrategy = rh
 	return j
 }
 
-func (j *Job) Run(ctx context.Context) *sync.Map {
+func (j *Job) Run() *sync.Map {
 	j.Logger.Info(j.description())
-	ready := make(chan *sync.Map)
-	go func() {
-		var result sync.Map
-		for r := range j.digest(ctx, j.chew(ctx, j.drain(ctx, j.feeder.Adapt()))) {
-			if v, existing := result.Load(r.Key); existing {
-				if d, _ := v.(model.Done); d.Retries < r.Retries {
+	if j.Feeder == nil {
+		return nil
+	} else {
+		ready := make(chan *sync.Map)
+		go func() {
+			var result sync.Map
+			for r := range j.digest(j.chew(j.drain(j.Feeder.Adapt()))) {
+				if v, existing := result.Load(r.Key); existing {
+					if d, _ := v.(model.Done); d.Retries < r.Retries {
+						result.Store(r.Key, r)
+					}
+				} else {
 					result.Store(r.Key, r)
 				}
-			} else {
-				result.Store(r.Key, r)
 			}
-		}
-		ready <- &result
-		close(ready)
-	}()
-	return <-ready
+			ready <- &result
+			close(ready)
+		}()
+		return <-ready
+	}
 }
 
 func NewJob(logger logging.Logger, name string, workers int, feeder *feeder.Feeder) *Job {
 	if workers <= 0 {
 		workers = runtime.NumCPU() * 64
 	}
-	return &Job{logger, name, workers, feeder, nil, nil}
+	if feeder == nil {
+		logger.Error("unable to initialise a job without a feeder!")
+		return nil
+	} else {
+		return &Job{logger, name, workers,
+			feeder, nil, nil}
+	}
 }

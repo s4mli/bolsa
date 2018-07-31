@@ -7,10 +7,10 @@ import (
 	"time"
 
 	"github.com/samwooo/bolsa/common"
-	"github.com/samwooo/bolsa/common/job"
-	"github.com/samwooo/bolsa/common/job/feeder"
-	"github.com/samwooo/bolsa/common/job/model"
-	"github.com/samwooo/bolsa/common/logging"
+	"github.com/samwooo/bolsa/job"
+	"github.com/samwooo/bolsa/job/feeder"
+	"github.com/samwooo/bolsa/job/model"
+	"github.com/samwooo/bolsa/logging"
 )
 
 type reduceJ struct {
@@ -19,7 +19,7 @@ type reduceJ struct {
 	iterator func(v interface{}, memo interface{}) (interface{}, error)
 }
 
-func (myself *reduceJ) Work(ctx context.Context, p interface{}) (r interface{}, e error) {
+func (myself *reduceJ) Work(p interface{}) (r interface{}, e error) {
 	var reasons []string
 	if myself.iterator != nil {
 		if data, ok := p.([]interface{}); !ok {
@@ -44,7 +44,7 @@ func Reduce(ctx context.Context, logger logging.Logger, data []interface{}, memo
 	start := time.Now()
 	f := feeder.NewDataFeeder(ctx, logger, data, 0, true)
 	reduce := &reduceJ{job.NewJob(logger, "Reduce", 1, f), memo, iterator}
-	r := reduce.LaborStrategy(reduce).Run(ctx)
+	r := reduce.SetLaborStrategy(reduce).Run()
 	reduce.Logger.Infof("done in %+v with %+v", time.Since(start), r)
 	r.Range(func(key, value interface{}) bool {
 		if d, ok := value.(model.Done); ok {

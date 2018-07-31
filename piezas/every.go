@@ -4,10 +4,10 @@ import (
 	"context"
 	"time"
 
-	"github.com/samwooo/bolsa/common/job"
-	"github.com/samwooo/bolsa/common/job/feeder"
-	"github.com/samwooo/bolsa/common/job/model"
-	"github.com/samwooo/bolsa/common/logging"
+	"github.com/samwooo/bolsa/job"
+	"github.com/samwooo/bolsa/job/feeder"
+	"github.com/samwooo/bolsa/job/model"
+	"github.com/samwooo/bolsa/logging"
 )
 
 type everyJ struct {
@@ -15,7 +15,7 @@ type everyJ struct {
 	iterator func(interface{}) (bool, error)
 }
 
-func (myself *everyJ) Work(ctx context.Context, p interface{}) (r interface{}, e error) {
+func (myself *everyJ) Work(p interface{}) (r interface{}, e error) {
 	if myself.iterator != nil {
 		return myself.iterator(p)
 	} else {
@@ -29,7 +29,7 @@ func Every(ctx context.Context, logger logging.Logger, data []interface{},
 	start := time.Now()
 	f := feeder.NewDataFeeder(ctx, logger, data, 1, true)
 	e := &everyJ{job.NewJob(logger, "every", 0, f), iterator}
-	r := e.LaborStrategy(e).Run(ctx)
+	r := e.SetLaborStrategy(e).Run()
 	e.Logger.Infof("done in %+v with %+v", time.Since(start), r)
 	pass := true
 	r.Range(func(key, value interface{}) bool {
