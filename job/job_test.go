@@ -41,7 +41,7 @@ func newJobTester(as model.LaborStrategy, with []interface{}, batch, maxRetry in
 	var ctx = context.Background()
 	var cancelFn context.CancelFunc
 	if usingContext {
-		ctx, cancelFn = context.WithDeadline(context.Background(), time.Now().Add(time.Second))
+		ctx, cancelFn = context.WithDeadline(context.Background(), time.Now().Add(time.Millisecond*500))
 		defer cancelFn()
 	}
 	jt := &JobTester{NewJob(logging.GetLogger(""), "", runtime.NumCPU(),
@@ -49,7 +49,7 @@ func newJobTester(as model.LaborStrategy, with []interface{}, batch, maxRetry in
 			batch, false)), maxRetry}
 	jt.SetLaborStrategy(as).SetRetryStrategy(jt)
 	if !usingContext {
-		time.AfterFunc(time.Second, func() { jt.Close() })
+		time.AfterFunc(time.Millisecond*500, func() { jt.Close() })
 	}
 	return jt
 }
@@ -59,125 +59,159 @@ func TestJobWithoutFeeder(t *testing.T) {
 	assert.Equal(t, (*Job)(nil), j)
 }
 
-func TestJobWithNoLaborNoRetry(t *testing.T) {
+func testJobWithNoLaborNoRetry(t *testing.T, flag bool) {
 	with := []interface{}{1, 2, 3}
-	for _, flag := range []bool{true, false} {
-		jt := newJobTester(nil, with, 1, 0, flag)
-		r := jt.Run()
-		count := 0
-		r.Range(func(key, value interface{}) bool {
-			done, ok := value.(model.Done)
-			assert.Equal(t, true, ok)
-			assert.Equal(t, true, common.IsIn(done.D, with))
-			assert.Equal(t, true, common.IsIn(done.R, with))
-			assert.Equal(t, nil, done.P)
-			assert.Equal(t, nil, done.E)
-			count++
-			return true
-		})
-		assert.Equal(t, len(with), count)
-	}
-
+	jt := newJobTester(nil, with, 1, 0, flag)
+	r := jt.Run()
+	count := 0
+	r.Range(func(key, value interface{}) bool {
+		done, ok := value.(model.Done)
+		assert.Equal(t, true, ok)
+		assert.Equal(t, true, common.IsIn(done.D, with))
+		assert.Equal(t, true, common.IsIn(done.R, with))
+		assert.Equal(t, nil, done.P)
+		assert.Equal(t, nil, done.E)
+		count++
+		return true
+	})
+	assert.Equal(t, len(with), count)
+}
+func TestJobWithNoLaborNoRetryWithContext(t *testing.T) {
+	testJobWithNoLaborNoRetry(t, true)
 }
 
-func TestJobWithNoLaborButRetry(t *testing.T) {
-	with := []interface{}{1, 2, 3}
-	for _, flag := range []bool{true, false} {
-		jt := newJobTester(nil, with, 1, 3, flag)
-		r := jt.Run()
-		count := 0
-		r.Range(func(key, value interface{}) bool {
-			done, ok := value.(model.Done)
-			assert.Equal(t, true, ok)
-			assert.Equal(t, true, common.IsIn(done.D, with))
-			assert.Equal(t, true, common.IsIn(done.R, with))
-			assert.Equal(t, nil, done.P)
-			assert.Equal(t, nil, done.E)
-			count++
-			return true
-		})
-		assert.Equal(t, len(with), count)
-	}
+func TestJobWithNoLaborNoRetryWithDeadline(t *testing.T) {
+	testJobWithNoLaborNoRetry(t, false)
 }
 
-func TestJobWithLaborErrorNoRetry(t *testing.T) {
+func testJobWithNoLaborButRetry(t *testing.T, flag bool) {
 	with := []interface{}{1, 2, 3}
-	for _, flag := range []bool{true, false} {
-		jt := newJobTester(&laborWithError{}, with, 1, 0, flag)
-		r := jt.Run()
-		count := 0
-		r.Range(func(key, value interface{}) bool {
-			done, ok := value.(model.Done)
-			assert.Equal(t, true, ok)
-			assert.Equal(t, true, common.IsIn(done.D, with))
-			assert.Equal(t, true, common.IsIn(done.P, with))
-			assert.Equal(t, nil, done.R)
-			assert.Equal(t, fmt.Sprintf("✗ labor failed ( %+v, test laborWithError )", done.P), done.E.Error())
-			count++
-			return true
-		})
-		assert.Equal(t, len(with), count)
-	}
+	jt := newJobTester(nil, with, 1, 3, flag)
+	r := jt.Run()
+	count := 0
+	r.Range(func(key, value interface{}) bool {
+		done, ok := value.(model.Done)
+		assert.Equal(t, true, ok)
+		assert.Equal(t, true, common.IsIn(done.D, with))
+		assert.Equal(t, true, common.IsIn(done.R, with))
+		assert.Equal(t, nil, done.P)
+		assert.Equal(t, nil, done.E)
+		count++
+		return true
+	})
+	assert.Equal(t, len(with), count)
 }
 
-func TestJobWithLaborErrorButRetry(t *testing.T) {
-	with := []interface{}{1, 2, 3}
-	for _, flag := range []bool{true, false} {
-		jt := newJobTester(&laborWithError{}, with, 1, 3, flag)
-		r := jt.Run()
-		count := 0
-		r.Range(func(key, value interface{}) bool {
-			done, ok := value.(model.Done)
-			assert.Equal(t, true, ok)
-			assert.Equal(t, true, common.IsIn(done.D, with))
-			assert.Equal(t, true, common.IsIn(done.P, with))
-			assert.Equal(t, nil, done.R)
-			assert.Equal(t, fmt.Sprintf("✗ labor failed ( %+v, test laborWithError )", done.P), done.E.Error())
-			count++
-			return true
-		})
-		assert.Equal(t, len(with), count)
-	}
+func TestJobWithNoLaborButRetryWithContext(t *testing.T) {
+	testJobWithNoLaborButRetry(t, true)
 }
 
-func TestJobWithLaborNoRetry(t *testing.T) {
-	with := []interface{}{1, 2, 3}
-	for _, flag := range []bool{true, false} {
-		jt := newJobTester(&laborWithoutError{}, with, 1, 0, flag)
-		r := jt.Run()
-		count := 0
-		r.Range(func(key, value interface{}) bool {
-			done, ok := value.(model.Done)
-			assert.Equal(t, true, ok)
-			assert.Equal(t, true, common.IsIn(done.D, with))
-			assert.Equal(t, true, common.IsIn(done.R, with))
-			assert.Equal(t, nil, done.P)
-			assert.Equal(t, nil, done.E)
-			count++
-			return true
-		})
-		assert.Equal(t, len(with), count)
-	}
+func TestJobWithNoLaborButRetryWithDeadline(t *testing.T) {
+	testJobWithNoLaborButRetry(t, false)
 }
 
-func TestJobWithLaborAndRetry(t *testing.T) {
+func testJobWithLaborErrorNoRetry(t *testing.T, flag bool) {
 	with := []interface{}{1, 2, 3}
-	for _, flag := range []bool{true, false} {
-		jt := newJobTester(&laborWithoutError{}, with, 1, 3, flag)
-		r := jt.Run()
-		count := 0
-		r.Range(func(key, value interface{}) bool {
-			done, ok := value.(model.Done)
-			assert.Equal(t, true, ok)
-			assert.Equal(t, true, common.IsIn(done.D, with))
-			assert.Equal(t, true, common.IsIn(done.R, with))
-			assert.Equal(t, nil, done.P)
-			assert.Equal(t, nil, done.E)
-			count++
-			return true
-		})
-		assert.Equal(t, len(with), count)
-	}
+	jt := newJobTester(&laborWithError{}, with, 1, 0, flag)
+	r := jt.Run()
+	count := 0
+	r.Range(func(key, value interface{}) bool {
+		done, ok := value.(model.Done)
+		assert.Equal(t, true, ok)
+		assert.Equal(t, true, common.IsIn(done.D, with))
+		assert.Equal(t, true, common.IsIn(done.P, with))
+		assert.Equal(t, nil, done.R)
+		assert.Equal(t, fmt.Sprintf("✗ labor failed ( %+v, test laborWithError )", done.P), done.E.Error())
+		count++
+		return true
+	})
+	assert.Equal(t, len(with), count)
+}
+
+func TestJobWithLaborErrorNoRetryWithContext(t *testing.T) {
+	testJobWithLaborErrorNoRetry(t, true)
+}
+
+func TestJobWithLaborErrorNoRetryWithDeadline(t *testing.T) {
+	testJobWithLaborErrorNoRetry(t, false)
+}
+
+func testJobWithLaborErrorButRetry(t *testing.T, flag bool) {
+	with := []interface{}{1, 2, 3}
+	jt := newJobTester(&laborWithError{}, with, 1, 3, flag)
+	r := jt.Run()
+	count := 0
+	r.Range(func(key, value interface{}) bool {
+		done, ok := value.(model.Done)
+		assert.Equal(t, true, ok)
+		assert.Equal(t, true, common.IsIn(done.D, with))
+		assert.Equal(t, true, common.IsIn(done.P, with))
+		assert.Equal(t, nil, done.R)
+		assert.Equal(t, fmt.Sprintf("✗ labor failed ( %+v, test laborWithError )", done.P), done.E.Error())
+		count++
+		return true
+	})
+	assert.Equal(t, len(with), count)
+}
+
+func TestJobWithLaborErrorButRetryWithContext(t *testing.T) {
+	testJobWithLaborErrorButRetry(t, true)
+}
+
+func TestJobWithLaborErrorButRetryWithDeadline(t *testing.T) {
+	testJobWithLaborErrorButRetry(t, false)
+}
+
+func testJobWithLaborNoRetry(t *testing.T, flag bool) {
+	with := []interface{}{1, 2, 3}
+	jt := newJobTester(&laborWithoutError{}, with, 1, 0, flag)
+	r := jt.Run()
+	count := 0
+	r.Range(func(key, value interface{}) bool {
+		done, ok := value.(model.Done)
+		assert.Equal(t, true, ok)
+		assert.Equal(t, true, common.IsIn(done.D, with))
+		assert.Equal(t, true, common.IsIn(done.R, with))
+		assert.Equal(t, nil, done.P)
+		assert.Equal(t, nil, done.E)
+		count++
+		return true
+	})
+	assert.Equal(t, len(with), count)
+}
+
+func TestJobWithLaborNoRetryWithContext(t *testing.T) {
+	testJobWithLaborNoRetry(t, true)
+}
+
+func TestJobWithLaborNoRetryWithDeadline(t *testing.T) {
+	testJobWithLaborNoRetry(t, false)
+}
+
+func testJobWithLaborAndRetry(t *testing.T, flag bool) {
+	with := []interface{}{1, 2, 3}
+	jt := newJobTester(&laborWithoutError{}, with, 1, 3, flag)
+	r := jt.Run()
+	count := 0
+	r.Range(func(key, value interface{}) bool {
+		done, ok := value.(model.Done)
+		assert.Equal(t, true, ok)
+		assert.Equal(t, true, common.IsIn(done.D, with))
+		assert.Equal(t, true, common.IsIn(done.R, with))
+		assert.Equal(t, nil, done.P)
+		assert.Equal(t, nil, done.E)
+		count++
+		return true
+	})
+	assert.Equal(t, len(with), count)
+}
+
+func TestJobWithLaborAndRetryWithContext(t *testing.T) {
+	testJobWithLaborAndRetry(t, true)
+}
+
+func TestJobWithLaborAndRetryWithDeadline(t *testing.T) {
+	testJobWithLaborAndRetry(t, false)
 }
 
 func (jt *JobTester) Work(p interface{}) (r interface{}, e error) {
@@ -189,33 +223,39 @@ func (jt *JobTester) Work(p interface{}) (r interface{}, e error) {
 	}
 }
 
-func TestJobItselfWithRetry(t *testing.T) {
+func testJobItselfWithRetry(t *testing.T, flag bool) {
 	with := []interface{}{1, 2, 3, 4, 5, 6, 7, 8}
-	for _, flag := range []bool{true, false} {
-		jt := newJobTester(nil, with, 1, 3, flag)
-		r := jt.SetLaborStrategy(jt).SetRetryStrategy(jt).Run()
-		count := 0
-		r.Range(func(key, value interface{}) bool {
-			done, ok := value.(model.Done)
-			assert.Equal(t, true, ok)
-			assert.Equal(t, true, common.IsIn(done.D, with))
-			if done.E != nil {
-				v, _ := done.P.(int)
-				assert.Equal(t, 1, v%2)
-				assert.Equal(t, nil, done.R)
-				assert.Equal(t, true, common.IsIn(done.P, with))
-				assert.Equal(t, fmt.Sprintf("✗ labor failed ( %v, itself error )", done.P), done.E.Error())
-			} else {
-				v, _ := done.R.(int)
-				assert.Equal(t, 0, v%2)
-				assert.Equal(t, nil, done.P)
-				assert.Equal(t, true, common.IsIn(done.R, with))
-			}
-			count++
-			return true
-		})
-		assert.Equal(t, len(with), count)
-	}
+	jt := newJobTester(nil, with, 1, 3, flag)
+	r := jt.SetLaborStrategy(jt).SetRetryStrategy(jt).Run()
+	count := 0
+	r.Range(func(key, value interface{}) bool {
+		done, ok := value.(model.Done)
+		assert.Equal(t, true, ok)
+		assert.Equal(t, true, common.IsIn(done.D, with))
+		if done.E != nil {
+			v, _ := done.P.(int)
+			assert.Equal(t, 1, v%2)
+			assert.Equal(t, nil, done.R)
+			assert.Equal(t, true, common.IsIn(done.P, with))
+			assert.Equal(t, fmt.Sprintf("✗ labor failed ( %v, itself error )", done.P), done.E.Error())
+		} else {
+			v, _ := done.R.(int)
+			assert.Equal(t, 0, v%2)
+			assert.Equal(t, nil, done.P)
+			assert.Equal(t, true, common.IsIn(done.R, with))
+		}
+		count++
+		return true
+	})
+	assert.Equal(t, len(with), count)
+}
+
+func TestJobItselfWithRetryWithContext(t *testing.T) {
+	testJobItselfWithRetry(t, true)
+}
+
+func TestJobItselfWithRetryWithDeadline(t *testing.T) {
+	testJobItselfWithRetry(t, false)
 }
 
 type retryHook struct{}
@@ -228,7 +268,7 @@ func TestJobItselfWithNoRetry(t *testing.T) {
 		feeder.NewDataFeeder(context.Background(), logging.GetLogger(""), with,
 			1, false)), 3}
 	jt.SetLaborStrategy(jt).SetRetryStrategy(&retryHook{})
-	time.AfterFunc(time.Second, func() { jt.Close() })
+	time.AfterFunc(time.Millisecond*500, func() { jt.Close() })
 	r := jt.Run()
 	count := 0
 	r.Range(func(key, value interface{}) bool {
@@ -264,13 +304,13 @@ func (bj *blindlyRetryJob) Work(p interface{}) (r interface{}, e error) {
 	return p, fmt.Errorf("|")
 }
 
-func TestBlindlyRetryJob(t *testing.T) {
+func testBlindlyRetryJob(t *testing.T, flag bool) {
 	with := []interface{}{"blindlyRetryJob"}
 	brj := &blindlyRetryJob{NewJob(logging.GetLogger(""), "", runtime.NumCPU(),
 		feeder.NewDataFeeder(context.Background(), logging.GetLogger(""), with, 1,
 			false)), 3}
 	brj.SetLaborStrategy(brj).SetRetryStrategy(brj)
-	time.AfterFunc(time.Second, func() { brj.Close() })
+	time.AfterFunc(time.Millisecond*500, func() { brj.Close() })
 	r := brj.Run()
 	count := 0
 	r.Range(func(key, value interface{}) bool {
@@ -284,6 +324,14 @@ func TestBlindlyRetryJob(t *testing.T) {
 		return true
 	})
 	assert.Equal(t, len(with), count)
+}
+
+func TestBlindlyRetryJobWithContext(t *testing.T) {
+	testBlindlyRetryJob(t, true)
+}
+
+func TestBlindlyRetryJobWithDeadline(t *testing.T) {
+	testBlindlyRetryJob(t, false)
 }
 
 func testJobWithAdditionalPush(t *testing.T, batch int, data interface{}) {
@@ -302,7 +350,7 @@ func testJobWithAdditionalPush(t *testing.T, batch int, data interface{}) {
 	}()
 	go func() {
 		jt.Push(data)
-		time.AfterFunc(time.Second, func() { jt.Close() })
+		time.AfterFunc(time.Millisecond*500, func() { jt.Close() })
 	}()
 
 	dataArray, isArray := data.([]interface{})
@@ -381,26 +429,52 @@ func testJobWithAdditionalPush(t *testing.T, batch int, data interface{}) {
 	assert.Equal(t, len(DS), count)
 }
 
-func TestJobWithPushOneMore(t *testing.T) {
+func testJobWithPushOneMoreWithBatch(t *testing.T, batch int) {
+	testJobWithAdditionalPush(t, batch, 10)
+}
+
+func TestJobWithPushOneMoreBatchLessThan0(t *testing.T) {
 	testJobWithAdditionalPush(t, -1, 10)
+}
+func TestJobWithPushOneMoreBatchEquals0(t *testing.T) {
 	testJobWithAdditionalPush(t, 0, 10)
-	testJobWithAdditionalPush(t, 1, 10)
+}
+func TestJobWithPushOneMoreBatchEquals1(t *testing.T) {
 	testJobWithAdditionalPush(t, 2, 10)
+}
+func TestJobWithPushOneMoreBatchBiggerThan1(t *testing.T) {
+	testJobWithAdditionalPush(t, 2, 10)
+}
+func TestJobWithPushOneMoreBatchBiggerThanSize(t *testing.T) {
 	testJobWithAdditionalPush(t, 100, 10)
 }
-
-func TestJobWithPushExistingOne(t *testing.T) {
+func TestJobWithPushExistingOneBatchLessThan0(t *testing.T) {
 	testJobWithAdditionalPush(t, -1, 2)
+}
+func TestJobWithPushExistingOneBatchEquals0(t *testing.T) {
 	testJobWithAdditionalPush(t, 0, 2)
-	testJobWithAdditionalPush(t, 1, 2)
+}
+func TestJobWithPushExistingOneBatchEquals1(t *testing.T) {
 	testJobWithAdditionalPush(t, 2, 2)
+}
+func TestJobWithPushExistingOneBatchBiggerThan1(t *testing.T) {
+	testJobWithAdditionalPush(t, 2, 2)
+}
+func TestJobWithPushExistingOneBatchBiggerThanSize(t *testing.T) {
 	testJobWithAdditionalPush(t, 100, 2)
 }
-
-func TestJobWithPushArray(t *testing.T) {
+func TestJobWithPushArrayBatchLessThan0(t *testing.T) {
 	testJobWithAdditionalPush(t, -1, []interface{}{2})
+}
+func TestJobWithPushArrayBatchEquals0(t *testing.T) {
 	testJobWithAdditionalPush(t, 0, []interface{}{2, 3, 4})
+}
+func TestJobWithPushArrayBatchEquals1(t *testing.T) {
 	testJobWithAdditionalPush(t, 1, []interface{}{5, 6, 7})
+}
+func TestJobWithPushArrayBatchBiggerThan1(t *testing.T) {
 	testJobWithAdditionalPush(t, 2, []interface{}{8, 9, 10})
+}
+func TestJobWithPushArrayBatchBiggerThanSize(t *testing.T) {
 	testJobWithAdditionalPush(t, 100, []interface{}{100, 101, 121})
 }
