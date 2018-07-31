@@ -39,10 +39,10 @@ func (jt *JobTester) Limit() int           { return jt.maxRetry }
 func (jt *JobTester) OnError(model.Done)   {}
 func newJobTester(as model.LaborStrategy, with []interface{}, batch, maxRetry int, usingContext bool) *JobTester {
 	var ctx = context.Background()
-	var cancelFn context.CancelFunc
+	var cancelFn context.CancelFunc = nil
 	if usingContext {
-		ctx, cancelFn = context.WithDeadline(context.Background(), time.Now().Add(time.Millisecond*500))
-		defer cancelFn()
+		ctx, cancelFn = context.WithCancel(context.Background())
+		time.AfterFunc(time.Millisecond*500, func() { cancelFn() })
 	}
 	jt := &JobTester{NewJob(logging.GetLogger(""), "", runtime.NumCPU(),
 		feeder.NewDataFeeder(ctx, logging.GetLogger(""), with,

@@ -20,13 +20,12 @@ func testWithNWorker(t *testing.T, workers int, noDrama, usingContext bool) {
 	var ctx = context.Background()
 	var cancelFn context.CancelFunc = nil
 	if usingContext {
-		ctx, cancelFn = context.WithDeadline(context.Background(), time.Now().Add(
-			time.Duration(len(data)*20)*time.Millisecond))
+		ctx, cancelFn = context.WithDeadline(context.Background(), time.Now().Add(time.Millisecond*200))
 		defer cancelFn()
 	}
 	f := feeder.NewDataFeeder(ctx, logging.GetLogger(""), data, 1, noDrama)
 	if !usingContext {
-		time.AfterFunc(time.Duration(len(data)*20)*time.Millisecond, func() { f.Close() })
+		time.AfterFunc(time.Millisecond*200, func() { f.Close() })
 	}
 	output := NewTask(logging.GetLogger(""), "",
 		func(d model.Done) (model.Done, bool) {
