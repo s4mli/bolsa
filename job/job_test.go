@@ -429,10 +429,6 @@ func testJobWithAdditionalPush(t *testing.T, batch int, data interface{}) {
 	assert.Equal(t, len(DS), count)
 }
 
-func testJobWithPushOneMoreWithBatch(t *testing.T, batch int) {
-	testJobWithAdditionalPush(t, batch, 10)
-}
-
 func TestJobWithPushOneMoreBatchLessThan0(t *testing.T) {
 	testJobWithAdditionalPush(t, -1, 10)
 }
