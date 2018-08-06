@@ -18,9 +18,8 @@ func (p *Postgres) ensureConnection() *Postgres {
 	return p
 }
 
-func (p *Postgres) Query(f func(db *sql.DB) error) error {
-	return f(p.ensureConnection().db)
-}
+func (p *Postgres) Query(f func(db *sql.DB) error) error { return f(p.ensureConnection().db) }
+func (p *Postgres) Close() error                         { return p.db.Close() }
 
 func NewPostgres(host, port, db, user, password string) *Postgres {
 	psqlInfo := fmt.Sprintf("host=%s port=%s user=%s dbname=%s sslmode=disable password=%s",

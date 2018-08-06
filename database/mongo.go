@@ -16,6 +16,8 @@ func (ms *Mongo) Query(collection string, f func(c *mgo.Collection) error) error
 	return f(c)
 }
 
+func (ms *Mongo) Close() error { ms.Session.Close(); return nil }
+
 func NewMongo(url, db string) *Mongo {
 	s, err := mgo.Dial(url)
 	if err != nil {
