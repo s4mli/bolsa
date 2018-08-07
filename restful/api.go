@@ -6,6 +6,8 @@ import (
 	"net/http"
 	"net/url"
 	"time"
+
+	"github.com/samwooo/bolsa/logging"
 )
 
 const (
@@ -38,6 +40,7 @@ type deleteSupported interface {
 }
 
 type API struct {
+	logger logging.Logger
 	Router map[string]http.HandlerFunc
 }
 
@@ -105,10 +108,10 @@ func (api *API) requestHandler(resource interface{}) http.HandlerFunc {
 	return func(rw http.ResponseWriter, request *http.Request) {
 		start := time.Now()
 		if message, err := api.requestFrom(request); err != nil {
-			defer fmt.Printf("%s %s %v \n", request.RequestURI, request.Method, time.Since(start))
+			defer api.logger.Infof("%s %s %v \n", request.RequestURI, request.Method, time.Since(start))
 			api.replyWith(rw, http.StatusBadRequest, nil, err)
 		} else {
-			defer fmt.Printf("%s %s \n\tForm: %+v\n\tBody: %+v\n\tCost: %+v\n", request.RequestURI,
+			defer api.logger.Infof("%s %s \n\tForm: %+v\n\tBody: %+v\n\tCost: %+v\n", request.RequestURI,
 				request.Method, message.Form, message.Body, time.Since(start))
 			if handler := api.handlerFor(resource, request.Method); handler != nil {
 				if data, e := handler(message); e != nil {
@@ -137,10 +140,10 @@ func (api *API) RegisterResource(resource interface{}, paths ...string) *API {
 }
 
 func (api *API) Start(port int) {
-	fmt.Println("server is running on port ", port)
+	api.logger.Infof("restful server is running on port %d", port)
 	if err := http.ListenAndServe(fmt.Sprintf(":%d", port), nil); err != nil {
-		fmt.Println("restful api error: ", err.Error())
+		api.logger.Errorf("restful server error: ", err.Error())
 	}
 }
 
-func NewAPI() *API { return &API{make(map[string]http.HandlerFunc)} }
+func NewAPI(logger logging.Logger) *API { return &API{logger, make(map[string]http.HandlerFunc)} }
