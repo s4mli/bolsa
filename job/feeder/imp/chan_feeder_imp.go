@@ -10,7 +10,7 @@ import (
 // Chan Feeder IMP //
 type chanFeederImp struct{ labor model.Labor }
 
-func (cf *chanFeederImp) Name() string                    { return fmt.Sprintf("chan") }
+func (cf *chanFeederImp) Name() string                    { return "chan" }
 func (cf *chanFeederImp) DoInit(ch chan model.Done) error { return nil }
 func (cf *chanFeederImp) DoExit(ch chan model.Done) error { return nil }
 func (cf *chanFeederImp) DoWork(ch chan model.Done) error {

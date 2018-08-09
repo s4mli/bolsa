@@ -30,7 +30,7 @@ func (df *dataFeederImp) pump(ch chan model.Done) error {
 	})
 	return common.ErrorFromString(strings.Join(errs, " | "))
 }
-func (df *dataFeederImp) Name() string                    { return fmt.Sprintf("data") }
+func (df *dataFeederImp) Name() string                    { return "data" }
 func (df *dataFeederImp) DoInit(ch chan model.Done) error { return df.DoPush(ch, df.initial) }
 func (df *dataFeederImp) DoWork(ch chan model.Done) error { return df.pump(ch) }
 func (df *dataFeederImp) DoExit(ch chan model.Done) error { return df.pump(ch) }
