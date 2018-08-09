@@ -3,6 +3,7 @@ package piezas
 import (
 	"context"
 	"fmt"
+	"runtime"
 	"strings"
 	"time"
 
@@ -42,7 +43,7 @@ func Reduce(ctx context.Context, logger logging.Logger, data []interface{}, memo
 	iterator func(interface{}, interface{}) (interface{}, error)) (m interface{}, e error) {
 
 	start := time.Now()
-	f := feeder.NewDataFeeder(ctx, logger, data, 0, true)
+	f := feeder.NewDataFeeder(ctx, logger, runtime.NumCPU(), data, 0, true)
 	reduce := &reduceJ{job.NewJob(logger, "Reduce", 1, f), memo, iterator}
 	r := reduce.SetLaborStrategy(reduce).Run()
 	reduce.Logger.Infof("done in %+v with %+v", time.Since(start), r)

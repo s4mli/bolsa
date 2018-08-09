@@ -45,7 +45,7 @@ func newJobTester(as model.LaborStrategy, with []interface{}, batch, maxRetry in
 		time.AfterFunc(time.Millisecond*500, func() { cancelFn() })
 	}
 	jt := &JobTester{NewJob(logging.GetLogger(""), "", runtime.NumCPU(),
-		feeder.NewDataFeeder(ctx, logging.GetLogger(""), with,
+		feeder.NewDataFeeder(ctx, logging.GetLogger(""), runtime.NumCPU(), with,
 			batch, false)), maxRetry}
 	jt.SetLaborStrategy(as).SetRetryStrategy(jt)
 	if !usingContext {
@@ -265,7 +265,7 @@ func (rh *retryHook) Limit() int            { return 3 }
 func TestJobItselfWithNoRetry(t *testing.T) {
 	with := []interface{}{1, 2, 3, 4, 5, 6, 7, 8}
 	jt := &JobTester{NewJob(logging.GetLogger(""), "", runtime.NumCPU(),
-		feeder.NewDataFeeder(context.Background(), logging.GetLogger(""), with,
+		feeder.NewDataFeeder(context.Background(), logging.GetLogger(""), runtime.NumCPU(), with,
 			1, false)), 3}
 	jt.SetLaborStrategy(jt).SetRetryStrategy(&retryHook{})
 	time.AfterFunc(time.Millisecond*500, func() { jt.Close() })
@@ -306,11 +306,20 @@ func (bj *blindlyRetryJob) Work(p interface{}) (r interface{}, e error) {
 
 func testBlindlyRetryJob(t *testing.T, flag bool) {
 	with := []interface{}{"blindlyRetryJob"}
+	var ctx = context.Background()
+	var cancelFn context.CancelFunc
+	if flag {
+		ctx, cancelFn = context.WithDeadline(context.Background(), time.Now().Add(
+			time.Duration(time.Millisecond*500)))
+		defer cancelFn()
+	}
 	brj := &blindlyRetryJob{NewJob(logging.GetLogger(""), "", runtime.NumCPU(),
-		feeder.NewDataFeeder(context.Background(), logging.GetLogger(""), with, 1,
-			false)), 3}
+		feeder.NewDataFeeder(ctx, logging.GetLogger(""), runtime.NumCPU(), with, 1, false)),
+		3}
 	brj.SetLaborStrategy(brj).SetRetryStrategy(brj)
-	time.AfterFunc(time.Millisecond*500, func() { brj.Close() })
+	if !flag {
+		time.AfterFunc(time.Millisecond*500, func() { brj.Close() })
+	}
 	r := brj.Run()
 	count := 0
 	r.Range(func(key, value interface{}) bool {
@@ -337,7 +346,7 @@ func TestBlindlyRetryJobWithDeadline(t *testing.T) {
 func testJobWithAdditionalPush(t *testing.T, batch int, data interface{}) {
 	with := []interface{}{1, 2, 3, 4, 5, 6, 7, 8, 9}
 	jt := &JobTester{NewJob(logging.GetLogger(""), "", runtime.NumCPU(),
-		feeder.NewDataFeeder(context.Background(), logging.GetLogger(""), with,
+		feeder.NewDataFeeder(context.Background(), logging.GetLogger(""), runtime.NumCPU(), with,
 			batch, false)), 3}
 	jt.SetLaborStrategy(&laborWithoutError{}).SetRetryStrategy(jt)
 

@@ -2,6 +2,7 @@ package piezas
 
 import (
 	"context"
+	"runtime"
 	"time"
 
 	"github.com/samwooo/bolsa/job"
@@ -27,7 +28,7 @@ func Map(ctx context.Context, logger logging.Logger, data []interface{},
 	iterator func(interface{}) (interface{}, error)) []interface{} {
 
 	start := time.Now()
-	f := feeder.NewDataFeeder(ctx, logger, data, 1, true)
+	f := feeder.NewDataFeeder(ctx, logger, runtime.NumCPU(), data, 1, true)
 	e := &mapJ{job.NewJob(logger, "Map", 0, f), iterator}
 	r := e.SetLaborStrategy(e).Run()
 	e.Logger.Infof("done in %+v with %+v", time.Since(start), r)

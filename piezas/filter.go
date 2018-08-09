@@ -2,6 +2,7 @@ package piezas
 
 import (
 	"context"
+	"runtime"
 	"time"
 
 	"github.com/samwooo/bolsa/job"
@@ -27,7 +28,7 @@ func Filter(ctx context.Context, logger logging.Logger, data []interface{},
 	iterator func(interface{}) (bool, error)) []interface{} {
 
 	start := time.Now()
-	f := feeder.NewDataFeeder(ctx, logger, data, 1, true)
+	f := feeder.NewDataFeeder(ctx, logger, runtime.NumCPU(), data, 1, true)
 	filter := &filterJ{job.NewJob(logger, "Filter", 0, f), iterator}
 	r := filter.SetLaborStrategy(filter).Run()
 	filter.Logger.Infof("done in %+v with %+v", time.Since(start), r)

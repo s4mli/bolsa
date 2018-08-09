@@ -2,6 +2,7 @@ package piezas
 
 import (
 	"context"
+	"runtime"
 	"sync"
 	"time"
 
@@ -26,7 +27,7 @@ func (myself *eachJ) Work(p interface{}) (r interface{}, e error) {
 func Each(ctx context.Context, logger logging.Logger, data []interface{},
 	ite func(interface{}) (interface{}, error)) *sync.Map {
 	start := time.Now()
-	f := feeder.NewDataFeeder(ctx, logger, data, 1, true)
+	f := feeder.NewDataFeeder(ctx, logger, runtime.NumCPU(), data, 1, true)
 	e := &eachJ{job.NewJob(logger, "Each", 0, f), ite}
 	done := e.SetLaborStrategy(e).Run()
 	e.Logger.Infof("done in %+v with %+v", time.Since(start), done)

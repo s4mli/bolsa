@@ -35,7 +35,7 @@ func (pj *PubJob) Limit() int                 { return pj.maxRetry }
 
 func NewPubJob(ctx context.Context, logger logging.Logger, broker Broker, data []interface{},
 	batchSize, maxRetry int, async bool) *PubJob {
-	return &PubJob{job.NewJob(logger, "pubJob", 0, feeder.NewDataFeeder(ctx, logger,
+	return &PubJob{job.NewJob(logger, "pubJob", 0, feeder.NewDataFeeder(ctx, logger, 0,
 		data, batchSize, !async)), broker, batchSize, maxRetry}
 }
 
@@ -64,7 +64,7 @@ func (pj *SubJob) Work(ctx context.Context, p interface{}) (r interface{}, e err
 }
 
 func NewSubJob(ctx context.Context, logger logging.Logger, broker Broker, handle MessageHandler) *SubJob {
-	return &SubJob{job.NewJob(logger, "subJob", 0, feeder.NewChanFeeder(ctx, logger,
+	return &SubJob{job.NewJob(logger, "subJob", 0, feeder.NewChanFeeder(ctx, logger, 0,
 		func(p interface{}) (r interface{}, e error) {
 			return broker.Poll(ctx)
 		})), broker, handle}

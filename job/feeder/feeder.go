@@ -29,10 +29,10 @@ type feederImp interface {
 /////////////////
 // Job Feeder //
 type Feeder struct {
-	logger logging.Logger
-	quit   chan bool
-	output chan model.Done
-	closed atomic.Value
+	logger  logging.Logger
+	workers int
+	output  chan model.Done
+	closed  atomic.Value
 	feederImp
 }
 
@@ -49,28 +49,29 @@ func (jf *Feeder) Retry(d model.Done) {
 		if err := jf.feederImp.DoRetry(jf.output, d); err != nil {
 			jf.logger.Warnf("✗ feeder %s retry failed ( %s )", jf.Name(), err.Error())
 		} else {
-			jf.logger.Debugf("✗ feeder %s retry ( %+v )", jf.Name(), d)
+			jf.logger.Debugf("✔ feeder %s retry ( %+v )", jf.Name(), d)
 		}
 	} else {
-		jf.logger.Debugf("✗ feeder %s retry skipped, channel closed ?", jf.Name())
+		jf.logger.Debugf("✗ feeder %s retry skipped", jf.Name())
 	}
 }
-func (jf *Feeder) Push(data interface{}) {
+func (jf *Feeder) Push(data interface{}) error {
 	if jf.feederImp != nil && !jf.Closed() {
 		if err := jf.feederImp.DoPush(jf.output, data); err != nil {
 			jf.logger.Warnf("✗ feeder %s push failed ( %s )", jf.Name(), err.Error())
+			return err
 		} else {
-			jf.logger.Debugf("✗ feeder %s push ( %+v )", jf.Name(), data)
+			jf.logger.Debugf("✔ feeder %s push ( %+v )", jf.Name(), data)
+			return nil
 		}
 	} else {
-		jf.logger.Debugf("✗ feeder %s push skipped, channel closed ?", jf.Name())
+		err := fmt.Errorf("✗ feeder %s push ( %+v ) skipped", jf.Name(), data)
+		jf.logger.Info(err)
+		return err
 	}
 }
-func (jf *Feeder) Close() {
-	if !jf.Closed() {
-		jf.quit <- true
-	}
-}
+func (jf *Feeder) Close() { jf.closed.Store(true) }
+
 func (jf *Feeder) Closed() bool {
 	if closed, ok := jf.closed.Load().(bool); ok {
 		return closed
@@ -79,25 +80,29 @@ func (jf *Feeder) Closed() bool {
 		return true
 	}
 }
-func newFeeder(ctx context.Context, logger logging.Logger, RIPRightAfterInit bool, f feederImp) *Feeder {
+func newFeeder(ctx context.Context, logger logging.Logger, workers int, RIPRightAfterInit bool, f feederImp) *Feeder {
 	initClosed := func() (closed atomic.Value) {
 		closed.Store(false)
 		return
 	}
-	jf := Feeder{logger, make(chan bool), make(chan model.Done, runtime.NumCPU()*64),
+	if workers <= 0 {
+		workers = runtime.NumCPU() * 64
+	}
+	jf := Feeder{logger, workers,
+		make(chan model.Done, workers),
 		initClosed(), f}
-	sig := make(chan os.Signal, 1)
+	sig, waitress := make(chan os.Signal, 1), make(chan bool, workers)
 	signal.Notify(sig, syscall.SIGHUP, syscall.SIGINT, syscall.SIGILL, syscall.SIGSYS,
 		syscall.SIGTERM, syscall.SIGTRAP, syscall.SIGQUIT, syscall.SIGABRT)
 	go func() {
 		for {
 			select {
 			case <-ctx.Done():
-				jf.logger.Warnf("⏳ cancellation, feeder %s quiting...", jf.Name())
+				jf.logger.Errorf("⏳ cancellation, feeder %s quiting...", jf.Name())
 				jf.Close()
 				return
 			case s := <-sig:
-				jf.logger.Warnf("⏳ signal ( %+v ) feeder %s quiting...", s, jf.Name())
+				jf.logger.Errorf("⏳ signal ( %+v ) feeder %s quiting...", s, jf.Name())
 				jf.Close()
 				return
 			default:
@@ -114,47 +119,53 @@ func newFeeder(ctx context.Context, logger logging.Logger, RIPRightAfterInit boo
 				jf.logger.Debugf("✗ feeder %s init succeed", jf.Name())
 			}
 		} else {
-			jf.logger.Debugf("✗ feeder %s init skipped, channel closed ?", jf.Name())
+			jf.logger.Debugf("✗ feeder %s init skipped", jf.Name())
 		}
 		if RIPRightAfterInit {
 			jf.Close()
 		}
 	}()
+
 	go func() {
-		for {
-			select {
-			case <-jf.quit:
-				if jf.feederImp != nil && !jf.Closed() {
-					if err := jf.feederImp.DoExit(jf.output); err != nil {
-						jf.logger.Warnf("✗ feeder %s exit failed ( %s )", jf.Name(), err.Error())
+		for i := 0; i < jf.workers; i++ {
+			<-waitress
+		}
+		close(jf.output)
+	}()
+
+	for i := 0; i < jf.workers; i++ {
+		go func() {
+			for {
+				if jf.Closed() {
+					if jf.feederImp != nil {
+						if err := jf.feederImp.DoExit(jf.output); err != nil {
+							jf.logger.Warnf("✗ feeder %s exit failed ( %s )", jf.Name(), err.Error())
+						}
 					}
+					waitress <- true
+					return
 				} else {
-					jf.logger.Debugf("✗ feeder %s exit skipped, channel closed ?", jf.Name())
-				}
-				close(jf.output)
-				jf.closed.Store(true)
-				return
-			default:
-				if jf.feederImp != nil && !jf.Closed() {
-					if err := jf.feederImp.DoWork(jf.output); err != nil {
-						jf.logger.Warnf("✗ feeder %s work failed ( %s )", jf.Name(), err.Error())
+					if jf.feederImp != nil {
+						if err := jf.feederImp.DoWork(jf.output); err != nil {
+							jf.logger.Warnf("✗ feeder %s work failed ( %s )", jf.Name(), err.Error())
+						}
+					} else {
+						jf.logger.Debugf("✗ feeder %s work skipped", jf.Name())
+						time.Sleep(time.Millisecond * 5)
 					}
-				} else {
-					jf.logger.Debugf("✗ feeder %s work skipped, channel closed ?", jf.Name())
-					time.Sleep(time.Millisecond * 5)
 				}
 			}
-		}
-	}()
+		}()
+	}
 
 	return &jf
 }
 
-func NewChanFeeder(ctx context.Context, logger logging.Logger, labor model.Labor) *Feeder {
-	return newFeeder(ctx, logger, false, imp.NewChanFeederImp(labor))
+func NewChanFeeder(ctx context.Context, logger logging.Logger, workers int, labor model.Labor) *Feeder {
+	return newFeeder(ctx, logger, workers, false, imp.NewChanFeederImp(labor))
 }
 
-func NewDataFeeder(ctx context.Context, logger logging.Logger, data []interface{}, batch int,
+func NewDataFeeder(ctx context.Context, logger logging.Logger, workers int, data []interface{}, batch int,
 	RIPRightAfterInit bool) *Feeder {
-	return newFeeder(ctx, logger, RIPRightAfterInit, imp.NewDataFeederImp(data, batch))
+	return newFeeder(ctx, logger, workers, RIPRightAfterInit, imp.NewDataFeederImp(data, batch))
 }

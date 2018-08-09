@@ -32,7 +32,7 @@ func testWithSingleGoroutineWithoutError(t *testing.T, usingContext bool) {
 			time.Duration(200)*time.Millisecond))
 		defer cancelFn()
 	}
-	f := NewChanFeeder(ctx, logging.GetLogger(""), withoutError)
+	f := NewChanFeeder(ctx, logging.GetLogger(""), runtime.NumCPU(), withoutError)
 	if !usingContext {
 		time.AfterFunc(time.Duration(200)*time.Millisecond, func() { f.Close() })
 	}
@@ -59,7 +59,7 @@ func testWithSingleGoroutineWithError(t *testing.T, usingContext bool) {
 			time.Duration(200)*time.Millisecond))
 		defer cancelFn()
 	}
-	f := NewChanFeeder(ctx, logging.GetLogger(""), withError)
+	f := NewChanFeeder(ctx, logging.GetLogger(""), runtime.NumCPU(), withError)
 	if !usingContext {
 		time.AfterFunc(time.Duration(200)*time.Millisecond, func() { f.Close() })
 	}
@@ -83,7 +83,7 @@ func testWithMultipleGoroutinesWithoutError(t *testing.T, usingContext bool) {
 			time.Duration(200)*time.Millisecond))
 		defer cancelFn()
 	}
-	f := NewChanFeeder(ctx, logging.GetLogger(""), withoutError)
+	f := NewChanFeeder(ctx, logging.GetLogger(""), runtime.NumCPU(), withoutError)
 	if !usingContext {
 		time.AfterFunc(time.Duration(200)*time.Millisecond, func() { f.Close() })
 	}
@@ -123,7 +123,7 @@ func testWithMultipleGoroutinesWithError(t *testing.T, usingContext bool) {
 			time.Duration(200)*time.Millisecond))
 		defer cancelFn()
 	}
-	f := NewChanFeeder(ctx, logging.GetLogger(""), withError)
+	f := NewChanFeeder(ctx, logging.GetLogger(""), runtime.NumCPU(), withError)
 	if !usingContext {
 		time.AfterFunc(time.Duration(200)*time.Millisecond, func() { f.Close() })
 	}

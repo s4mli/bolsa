@@ -23,7 +23,7 @@ func testWithNWorker(t *testing.T, workers int, noDrama, usingContext bool) {
 		ctx, cancelFn = context.WithDeadline(context.Background(), time.Now().Add(time.Millisecond*200))
 		defer cancelFn()
 	}
-	f := feeder.NewDataFeeder(ctx, logging.GetLogger(""), data, 1, noDrama)
+	f := feeder.NewDataFeeder(ctx, logging.GetLogger(""), runtime.NumCPU(), data, 1, noDrama)
 	if !usingContext {
 		time.AfterFunc(time.Millisecond*200, func() { f.Close() })
 	}

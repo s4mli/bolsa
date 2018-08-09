@@ -20,7 +20,7 @@ func testWithInSingleGoroutine(t *testing.T, noDrama, usingContext bool, batch i
 			time.Duration(len(data)*20)*time.Millisecond))
 		defer cancelFn()
 	}
-	f := NewDataFeeder(ctx, logging.GetLogger(""), data, batch, noDrama)
+	f := NewDataFeeder(ctx, logging.GetLogger(""), runtime.NumCPU(), data, batch, noDrama)
 	if !usingContext {
 		time.AfterFunc(time.Duration(len(data)*20)*time.Millisecond, func() { f.Close() })
 	}
@@ -55,7 +55,7 @@ func testWithInSingleGoroutine(t *testing.T, noDrama, usingContext bool, batch i
 			return group
 		}
 	}
-	assert.Equal(t, group(), count)
+	assert.Equal(t, true, group() <= count)
 }
 
 func testWithinMultipleGoroutines(t *testing.T, noDrama, usingContext bool, batch int) {
@@ -67,7 +67,7 @@ func testWithinMultipleGoroutines(t *testing.T, noDrama, usingContext bool, batc
 			time.Duration(len(data)*20)*time.Millisecond))
 		defer cancelFn()
 	}
-	f := NewDataFeeder(ctx, logging.GetLogger(""), data, batch, noDrama)
+	f := NewDataFeeder(ctx, logging.GetLogger(""), runtime.NumCPU(), data, batch, noDrama)
 	if !usingContext {
 		time.AfterFunc(time.Duration(len(data)*20)*time.Millisecond, func() { f.Close() })
 	}
@@ -114,7 +114,7 @@ func testWithinMultipleGoroutines(t *testing.T, noDrama, usingContext bool, batc
 			return group
 		}
 	}
-	assert.Equal(t, group(), count)
+	assert.Equal(t, true, group() <= count)
 }
 
 func TestDataFeederWithinSingleGoroutineWithContext(t *testing.T) {
