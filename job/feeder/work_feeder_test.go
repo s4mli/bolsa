@@ -8,6 +8,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/samwooo/bolsa/job/model"
 	"github.com/samwooo/bolsa/logging"
 	"github.com/stretchr/testify/assert"
 )
@@ -15,6 +16,14 @@ import (
 var _ = logging.DefaultLogger("", logging.LogLevelFromString("ERROR"), 100)
 
 var COUNTER uint64 = 0
+
+func work(labor model.Labor) error {
+	if _, err := labor(nil); err != nil {
+		return err
+	} else {
+		return nil
+	}
+}
 
 func withoutError(p interface{}) (r interface{}, e error) {
 	return atomic.AddUint64(&COUNTER, 2), nil
@@ -32,7 +41,7 @@ func testWithSingleGoroutineWithoutError(t *testing.T, usingContext bool) {
 			time.Duration(200)*time.Millisecond))
 		defer cancelFn()
 	}
-	f := NewChanFeeder(ctx, logging.GetLogger(""), runtime.NumCPU(), withoutError)
+	f := NewWorkFeeder(ctx, logging.GetLogger(""), runtime.NumCPU(), work, withoutError)
 	if !usingContext {
 		time.AfterFunc(time.Duration(200)*time.Millisecond, func() { f.Close() })
 	}
@@ -59,7 +68,7 @@ func testWithSingleGoroutineWithError(t *testing.T, usingContext bool) {
 			time.Duration(200)*time.Millisecond))
 		defer cancelFn()
 	}
-	f := NewChanFeeder(ctx, logging.GetLogger(""), runtime.NumCPU(), withError)
+	f := NewWorkFeeder(ctx, logging.GetLogger(""), runtime.NumCPU(), work, withError)
 	if !usingContext {
 		time.AfterFunc(time.Duration(200)*time.Millisecond, func() { f.Close() })
 	}
@@ -83,7 +92,7 @@ func testWithMultipleGoroutinesWithoutError(t *testing.T, usingContext bool) {
 			time.Duration(200)*time.Millisecond))
 		defer cancelFn()
 	}
-	f := NewChanFeeder(ctx, logging.GetLogger(""), runtime.NumCPU(), withoutError)
+	f := NewWorkFeeder(ctx, logging.GetLogger(""), runtime.NumCPU(), work, withoutError)
 	if !usingContext {
 		time.AfterFunc(time.Duration(200)*time.Millisecond, func() { f.Close() })
 	}
@@ -123,7 +132,7 @@ func testWithMultipleGoroutinesWithError(t *testing.T, usingContext bool) {
 			time.Duration(200)*time.Millisecond))
 		defer cancelFn()
 	}
-	f := NewChanFeeder(ctx, logging.GetLogger(""), runtime.NumCPU(), withError)
+	f := NewWorkFeeder(ctx, logging.GetLogger(""), runtime.NumCPU(), work, withError)
 	if !usingContext {
 		time.AfterFunc(time.Duration(200)*time.Millisecond, func() { f.Close() })
 	}
@@ -152,14 +161,14 @@ func testWithMultipleGoroutinesWithError(t *testing.T, usingContext bool) {
 	assert.Equal(t, 0, count)
 }
 
-func TestChanFeederWithinSingleGoroutine(t *testing.T) {
+func TestWorkFeederWithinSingleGoroutine(t *testing.T) {
 	testWithSingleGoroutineWithError(t, true)
 	testWithSingleGoroutineWithError(t, false)
 	testWithSingleGoroutineWithoutError(t, true)
 	testWithSingleGoroutineWithoutError(t, false)
 }
 
-func TestChanFeederWithinMultipleGoroutines(t *testing.T) {
+func TestWorkFeederWithinMultipleGoroutines(t *testing.T) {
 	testWithMultipleGoroutinesWithError(t, true)
 	testWithMultipleGoroutinesWithError(t, false)
 	testWithMultipleGoroutinesWithoutError(t, true)

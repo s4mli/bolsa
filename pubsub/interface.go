@@ -17,7 +17,10 @@ type Publisher interface {
 	PublishAsync(ctx context.Context, messageBody []interface{})
 }
 
-type MessageHandler func(ctx context.Context, messageBody []interface{}) error
+type MessageHandler func(messageBody []interface{}) error
+
+func (mh MessageHandler) handle(messageBody []interface{}) error { return mh(messageBody) }
+
 type Subscriber interface {
 	// subscribe to Broker, handle batched amount of message body per message
 	Subscribe(ctx context.Context, handler MessageHandler)

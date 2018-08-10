@@ -14,20 +14,21 @@ import (
 // pub job //
 type PubJob struct {
 	*job.Job
+	ctx       context.Context
 	broker    Broker
 	batchSize int
 	maxRetry  int
 }
 
-func (pj *PubJob) Work(ctx context.Context, p interface{}) (r interface{}, e error) {
+func (pj *PubJob) Work(p interface{}) (r interface{}, e error) {
 	if pj.batchSize != 1 {
 		if pIsArray, ok := p.([]interface{}); ok {
-			return pj.broker.Push(ctx, pIsArray)
+			return pj.broker.Push(pj.ctx, pIsArray)
 		} else {
 			return nil, fmt.Errorf("push failed: expect P to be an array")
 		}
 	} else {
-		return pj.broker.Push(ctx, []interface{}{p})
+		return pj.broker.Push(pj.ctx, []interface{}{p})
 	}
 }
 func (pj *PubJob) Worth(done model.Done) bool { return done.E != nil }
@@ -36,21 +37,22 @@ func (pj *PubJob) Limit() int                 { return pj.maxRetry }
 func NewPubJob(ctx context.Context, logger logging.Logger, broker Broker, data []interface{},
 	batchSize, maxRetry int, async bool) *PubJob {
 	return &PubJob{job.NewJob(logger, "pubJob", 0, feeder.NewDataFeeder(ctx, logger, 0,
-		data, batchSize, !async)), broker, batchSize, maxRetry}
+		data, batchSize, !async)), ctx, broker, batchSize, maxRetry}
 }
 
 ///////////////
 // sub job //
 type SubJob struct {
 	*job.Job
-	broker Broker
-	handle MessageHandler
+	ctx     context.Context
+	broker  Broker
+	handler MessageHandler
 }
 
-func (pj *SubJob) Work(ctx context.Context, p interface{}) (r interface{}, e error) {
-	if pj.handle != nil {
+func (pj *SubJob) Work(p interface{}) (r interface{}, e error) {
+	if pj.handler != nil {
 		if messageBody, ok := p.([]interface{}); ok {
-			if err := pj.handle(ctx, messageBody); err != nil {
+			if err := pj.handler.handle(messageBody); err != nil {
 				return nil, err
 			} else {
 				return nil, nil
@@ -63,9 +65,14 @@ func (pj *SubJob) Work(ctx context.Context, p interface{}) (r interface{}, e err
 	}
 }
 
-func NewSubJob(ctx context.Context, logger logging.Logger, broker Broker, handle MessageHandler) *SubJob {
-	return &SubJob{job.NewJob(logger, "subJob", 0, feeder.NewChanFeeder(ctx, logger, 0,
-		func(p interface{}) (r interface{}, e error) {
-			return broker.Poll(ctx)
-		})), broker, handle}
+func NewSubJob(ctx context.Context, logger logging.Logger, broker Broker, handler MessageHandler) *SubJob {
+	return &SubJob{job.NewJob(logger, "subJob", 0, feeder.NewWorkFeeder(ctx, logger, 0,
+		func(labor model.Labor) error {
+			if body, err := broker.Poll(ctx); err != nil {
+				return err
+			} else {
+				_, err := labor(body)
+				return err
+			}
+		}, nil)), ctx, broker, handler}
 }

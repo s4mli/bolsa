@@ -76,6 +76,5 @@ func (df *dataFeederImp) DoPush(ch chan model.Done, data interface{}) error {
 	return nil
 }
 func NewDataFeederImp(data []interface{}, batch int) *dataFeederImp {
-	df := dataFeederImp{data, sync.Map{}, batch}
-	return &df
+	return &dataFeederImp{data, sync.Map{}, batch}
 }

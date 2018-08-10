@@ -13,11 +13,11 @@ type Subscriber struct {
 	*pubsub.SubJob
 }
 
-func (s *Subscriber) Subscribe(ctx context.Context, handle pubsub.MessageHandler) {
+func (s *Subscriber) Subscribe(ctx context.Context, handler pubsub.MessageHandler) {
 	if s.SubJob == nil {
-		s.SubJob = pubsub.NewSubJob(ctx, s.q.Logger, s.q, handle)
+		s.SubJob = pubsub.NewSubJob(ctx, s.q.Logger, s.q, handler)
 	}
-	s.SubJob.Run()
+	s.SubJob.SetLaborStrategy(s.SubJob).Run()
 }
 
 func NewSubscriber(ctx context.Context, q *Queue) *Subscriber {

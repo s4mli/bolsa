@@ -22,7 +22,7 @@ type Publisher struct {
 func (p *Publisher) PublishAsync(ctx context.Context, messageBody []interface{}) {
 	if p.PubJob == nil {
 		p.PubJob = pubsub.NewPubJob(ctx, p.q.Logger, p.q, messageBody, p.batchSize, p.maxRetry, true)
-		p.PubJob.Run()
+		p.PubJob.SetLaborStrategy(p.PubJob).SetRetryStrategy(p.PubJob).Run()
 	} else {
 		p.PubJob.Push(messageBody)
 	}
