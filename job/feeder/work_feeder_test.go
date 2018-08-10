@@ -41,7 +41,7 @@ func testWithSingleGoroutineWithoutError(t *testing.T, usingContext bool) {
 			time.Duration(200)*time.Millisecond))
 		defer cancelFn()
 	}
-	f := NewWorkFeeder(ctx, logging.GetLogger(""), runtime.NumCPU(), work, withoutError)
+	f := NewWorkFeeder(ctx, logging.GetLogger(""), runtime.NumCPU(), nil, work, withoutError, nil)
 	if !usingContext {
 		time.AfterFunc(time.Duration(200)*time.Millisecond, func() { f.Close() })
 	}
@@ -68,7 +68,7 @@ func testWithSingleGoroutineWithError(t *testing.T, usingContext bool) {
 			time.Duration(200)*time.Millisecond))
 		defer cancelFn()
 	}
-	f := NewWorkFeeder(ctx, logging.GetLogger(""), runtime.NumCPU(), work, withError)
+	f := NewWorkFeeder(ctx, logging.GetLogger(""), runtime.NumCPU(), nil, work, withError, nil)
 	if !usingContext {
 		time.AfterFunc(time.Duration(200)*time.Millisecond, func() { f.Close() })
 	}
@@ -92,7 +92,7 @@ func testWithMultipleGoroutinesWithoutError(t *testing.T, usingContext bool) {
 			time.Duration(200)*time.Millisecond))
 		defer cancelFn()
 	}
-	f := NewWorkFeeder(ctx, logging.GetLogger(""), runtime.NumCPU(), work, withoutError)
+	f := NewWorkFeeder(ctx, logging.GetLogger(""), runtime.NumCPU(), nil, work, withoutError, nil)
 	if !usingContext {
 		time.AfterFunc(time.Duration(200)*time.Millisecond, func() { f.Close() })
 	}
@@ -132,7 +132,7 @@ func testWithMultipleGoroutinesWithError(t *testing.T, usingContext bool) {
 			time.Duration(200)*time.Millisecond))
 		defer cancelFn()
 	}
-	f := NewWorkFeeder(ctx, logging.GetLogger(""), runtime.NumCPU(), work, withError)
+	f := NewWorkFeeder(ctx, logging.GetLogger(""), runtime.NumCPU(), nil, work, withError, nil)
 	if !usingContext {
 		time.AfterFunc(time.Duration(200)*time.Millisecond, func() { f.Close() })
 	}

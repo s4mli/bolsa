@@ -161,8 +161,9 @@ func newFeeder(ctx context.Context, logger logging.Logger, workers int, RIPRight
 	return &jf
 }
 
-func NewWorkFeeder(ctx context.Context, logger logging.Logger, workers int, work imp.Work, labor model.Labor) *Feeder {
-	return newFeeder(ctx, logger, workers, false, imp.NewWorkFeederImp(work, labor))
+func NewWorkFeeder(ctx context.Context, logger logging.Logger, workers int, init imp.Init, work imp.Work,
+	labor model.Labor, exit imp.Exit) *Feeder {
+	return newFeeder(ctx, logger, workers, false, imp.NewWorkFeederImp(init, work, labor, exit))
 }
 
 func NewDataFeeder(ctx context.Context, logger logging.Logger, workers int, data []interface{}, batch int,

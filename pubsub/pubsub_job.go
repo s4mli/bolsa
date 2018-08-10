@@ -67,6 +67,7 @@ func (pj *SubJob) Work(p interface{}) (r interface{}, e error) {
 
 func NewSubJob(ctx context.Context, logger logging.Logger, broker Broker, handler MessageHandler) *SubJob {
 	return &SubJob{job.NewJob(logger, "subJob", 0, feeder.NewWorkFeeder(ctx, logger, 0,
+		nil,
 		func(labor model.Labor) error {
 			if body, err := broker.Poll(ctx); err != nil {
 				return err
@@ -74,5 +75,7 @@ func NewSubJob(ctx context.Context, logger logging.Logger, broker Broker, handle
 				_, err := labor(body)
 				return err
 			}
-		}, nil)), ctx, broker, handler}
+		},
+		nil,
+		nil)), ctx, broker, handler}
 }
