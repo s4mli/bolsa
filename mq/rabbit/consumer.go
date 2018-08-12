@@ -1,4 +1,4 @@
-package rebbit
+package rabbit
 
 import (
 	"context"
