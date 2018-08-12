@@ -89,6 +89,14 @@
   version = "v1.0.0"
 
 [[projects]]
+  branch = "master"
+  digest = "1:0c088044c1c1ee83e723692442df4fec9b3f2e57f7a99773485c97adfbc31695"
+  name = "github.com/streadway/amqp"
+  packages = ["."]
+  pruneopts = "UT"
+  revision = "70e15c650864f4fc47f5d3c82ea117285480895d"
+
+[[projects]]
   digest = "1:18752d0b95816a1b777505a97f71c7467a8445b8ffb55631a7bf779f6ba4fa83"
   name = "github.com/stretchr/testify"
   packages = ["assert"]
@@ -127,6 +135,7 @@
     "github.com/aws/aws-sdk-go/service/sqs",
     "github.com/go-sql-driver/mysql",
     "github.com/lib/pq",
+    "github.com/streadway/amqp",
     "github.com/stretchr/testify/assert",
     "gopkg.in/mgo.v2",
   ]
