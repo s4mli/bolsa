@@ -42,11 +42,11 @@ func (c *Consumer) Run() {
 		for {
 			select {
 			case <-c.ctx.Done():
-				c.logger.Errorf("⏳ cancellation, %s consumer quiting...", c.qName)
+				c.logger.Infof("⏳ cancellation, consumer ( %s ) quiting...", c.qName)
 				c.Close()
 				return
 			case s := <-sig:
-				c.logger.Errorf("⏳ signal ( %+v ) %s consumer quiting...", s, c.qName)
+				c.logger.Infof("⏳ signal ( %+v ) consumer ( %s ) quiting...", s, c.qName)
 				c.Close()
 				return
 			default:

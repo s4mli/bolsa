@@ -150,9 +150,9 @@ func (api *API) Start(ctx context.Context, port int) {
 
 	shutdown := func() {
 		if err := server.Shutdown(ctx); err != nil {
-			api.logger.Errorf("shutdown restful server failed: %s", err.Error())
+			api.logger.Errorf("shutdown failed: %s", err.Error())
 		} else {
-			api.logger.Info("restful server stopped")
+			api.logger.Info("stopped")
 		}
 	}
 
@@ -160,11 +160,11 @@ func (api *API) Start(ctx context.Context, port int) {
 		for {
 			select {
 			case <-ctx.Done():
-				api.logger.Info("⏳ cancellation, restful server is quiting...")
+				api.logger.Info("⏳ cancellation, server is quiting...")
 				shutdown()
 				return
 			case s := <-sig:
-				api.logger.Infof("⏳ signal ( %+v ) restful server is quiting...", s)
+				api.logger.Infof("⏳ signal ( %+v ) server is quiting...", s)
 				shutdown()
 				return
 			default:
@@ -173,10 +173,9 @@ func (api *API) Start(ctx context.Context, port int) {
 		}
 	}()
 
+	api.logger.Infof("listening on 0.0.0.0:%d", port)
 	if err := server.ListenAndServe(); err != http.ErrServerClosed {
-		api.logger.Errorf("restful server error: ", err.Error())
-	} else {
-		api.logger.Infof("restful server listening on 0.0.0.0:%d", port)
+		api.logger.Errorf("start error: ", err.Error())
 	}
 }
 
