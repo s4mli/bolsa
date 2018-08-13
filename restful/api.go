@@ -1,10 +1,14 @@
 package restful
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
 	"net/url"
+	"os"
+	"os/signal"
+	"syscall"
 	"time"
 
 	"github.com/samwooo/bolsa/logging"
@@ -26,7 +30,6 @@ type Request struct {
 type getSupported interface {
 	Get(*Request) (interface{}, error)
 }
-
 type postSupported interface {
 	Post(*Request) (interface{}, error)
 }
@@ -41,7 +44,7 @@ type deleteSupported interface {
 
 type API struct {
 	logger logging.Logger
-	Router map[string]http.HandlerFunc
+	mux    *http.ServeMux
 }
 
 func (api *API) requestFrom(r *http.Request) (*Request, error) {
@@ -133,17 +136,50 @@ func (api *API) requestHandler(resource interface{}) http.HandlerFunc {
 func (api *API) RegisterResource(resource interface{}, paths ...string) *API {
 	for _, path := range paths {
 		handler := api.requestHandler(resource)
-		api.Router[path] = handler
-		http.HandleFunc(path, handler)
+		api.mux.HandleFunc(path, handler)
 	}
 	return api
 }
 
-func (api *API) Start(port int) {
-	api.logger.Infof("restful server is running on port %d", port)
-	if err := http.ListenAndServe(fmt.Sprintf(":%d", port), nil); err != nil {
+func (api *API) ServeHTTP(w http.ResponseWriter, r *http.Request) { api.mux.ServeHTTP(w, r) }
+func (api *API) Start(ctx context.Context, port int) {
+	server := http.Server{Addr: fmt.Sprintf(":%d", port), Handler: api}
+	sig := make(chan os.Signal, 1)
+	signal.Notify(sig, syscall.SIGHUP, syscall.SIGINT, syscall.SIGILL, syscall.SIGSYS,
+		syscall.SIGTERM, syscall.SIGTRAP, syscall.SIGQUIT, syscall.SIGABRT)
+
+	shutdown := func() {
+		if err := server.Shutdown(ctx); err != nil {
+			api.logger.Errorf("shutdown restful server failed: %s", err.Error())
+		} else {
+			api.logger.Info("restful server stopped")
+		}
+	}
+
+	go func() {
+		for {
+			select {
+			case <-ctx.Done():
+				api.logger.Info("⏳ cancellation, restful server is quiting...")
+				shutdown()
+				return
+			case s := <-sig:
+				api.logger.Infof("⏳ signal ( %+v ) restful server is quiting...", s)
+				shutdown()
+				return
+			default:
+				time.Sleep(time.Millisecond * 10)
+			}
+		}
+	}()
+
+	if err := server.ListenAndServe(); err != http.ErrServerClosed {
 		api.logger.Errorf("restful server error: ", err.Error())
+	} else {
+		api.logger.Infof("restful server listening on 0.0.0.0:%d", port)
 	}
 }
 
-func NewAPI(logger logging.Logger) *API { return &API{logger, make(map[string]http.HandlerFunc)} }
+func NewAPI(logger logging.Logger) *API {
+	return &API{logger, http.NewServeMux()}
+}

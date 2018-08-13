@@ -98,11 +98,11 @@ func newFeeder(ctx context.Context, logger logging.Logger, workers int, RIPRight
 		for {
 			select {
 			case <-ctx.Done():
-				jf.logger.Errorf("⏳ cancellation, feeder %s quiting...", jf.Name())
+				jf.logger.Infof("⏳ cancellation, feeder %s quiting...", jf.Name())
 				jf.Close()
 				return
 			case s := <-sig:
-				jf.logger.Errorf("⏳ signal ( %+v ) feeder %s quiting...", s, jf.Name())
+				jf.logger.Infof("⏳ signal ( %+v ) feeder %s quiting...", s, jf.Name())
 				jf.Close()
 				return
 			default:

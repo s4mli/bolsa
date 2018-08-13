@@ -21,8 +21,7 @@ const (
 var _ = logging.DefaultLogger("", logging.LogLevelFromString("INFO"), 100)
 
 func ensureServerIsRunning(r interface{}) *httptest.Server {
-	return httptest.NewServer(NewAPI(logging.GetLogger("")).RegisterResource(r,
-		TestEndpoint).Router[TestEndpoint])
+	return httptest.NewServer(NewAPI(logging.GetLogger("")).RegisterResource(r, TestEndpoint))
 }
 
 func doRequest(method string, s *httptest.Server, data map[string]interface{}) (*http.Response, error) {
@@ -64,7 +63,6 @@ func TestGetWithError(t *testing.T) {
 	assert.Equal(t, nil, err)
 	defer resp.Body.Close()
 	assert.Equal(t, http.StatusInternalServerError, resp.StatusCode)
-	http.DefaultServeMux = new(http.ServeMux)
 }
 
 func TestGetWithoutError(t *testing.T) {
@@ -80,7 +78,6 @@ func TestGetWithoutError(t *testing.T) {
 	jd, err := json.MarshalIndent("some GET info", "", "	")
 	assert.Equal(t, nil, err)
 	assert.Equal(t, jd, actual)
-	http.DefaultServeMux = new(http.ServeMux)
 }
 
 func TestGetWith1Para(t *testing.T) {
@@ -96,7 +93,6 @@ func TestGetWith1Para(t *testing.T) {
 	jd, err := json.MarshalIndent("some GET info12345", "", "	")
 	assert.Equal(t, nil, err)
 	assert.Equal(t, jd, actual)
-	http.DefaultServeMux = new(http.ServeMux)
 }
 
 func TestGetWith2Para(t *testing.T) {
@@ -112,7 +108,6 @@ func TestGetWith2Para(t *testing.T) {
 	jd, err := json.MarshalIndent("some GET info12345|98765", "", "	")
 	assert.Equal(t, nil, err)
 	assert.Equal(t, jd, actual)
-	http.DefaultServeMux = new(http.ServeMux)
 }
 
 func TestGetWithNotAllowed(t *testing.T) {
@@ -123,19 +118,16 @@ func TestGetWithNotAllowed(t *testing.T) {
 	assert.Equal(t, nil, err)
 	defer resp.Body.Close()
 	assert.Equal(t, http.StatusMethodNotAllowed, resp.StatusCode)
-	http.DefaultServeMux = new(http.ServeMux)
 
 	resp, err = doRequest("PUT", server, nil)
 	assert.Equal(t, nil, err)
 	defer resp.Body.Close()
 	assert.Equal(t, http.StatusMethodNotAllowed, resp.StatusCode)
-	http.DefaultServeMux = new(http.ServeMux)
 
 	resp, err = doRequest("DELETE", server, nil)
 	assert.Equal(t, nil, err)
 	defer resp.Body.Close()
 	assert.Equal(t, http.StatusMethodNotAllowed, resp.StatusCode)
-	http.DefaultServeMux = new(http.ServeMux)
 }
 
 // POST
@@ -171,7 +163,6 @@ func TestPostWithError(t *testing.T) {
 	assert.Equal(t, nil, err)
 	defer resp.Body.Close()
 	assert.Equal(t, http.StatusInternalServerError, resp.StatusCode)
-	http.DefaultServeMux = new(http.ServeMux)
 }
 
 func TestPostWithoutError(t *testing.T) {
@@ -190,7 +181,6 @@ func TestPostWithoutError(t *testing.T) {
 	actual, err := ioutil.ReadAll(resp.Body)
 	assert.Equal(t, nil, err)
 	assert.Equal(t, "\"some POST info1\"", string(actual))
-	http.DefaultServeMux = new(http.ServeMux)
 }
 
 func TestPostWithNotAllowed(t *testing.T) {
@@ -204,19 +194,16 @@ func TestPostWithNotAllowed(t *testing.T) {
 	assert.Equal(t, nil, err)
 	defer resp.Body.Close()
 	assert.Equal(t, http.StatusMethodNotAllowed, resp.StatusCode)
-	http.DefaultServeMux = new(http.ServeMux)
 
 	resp, err = doRequest("PUT", server, data)
 	assert.Equal(t, nil, err)
 	defer resp.Body.Close()
 	assert.Equal(t, http.StatusMethodNotAllowed, resp.StatusCode)
-	http.DefaultServeMux = new(http.ServeMux)
 
 	resp, err = doRequest("DELETE", server, data)
 	assert.Equal(t, nil, err)
 	defer resp.Body.Close()
 	assert.Equal(t, http.StatusMethodNotAllowed, resp.StatusCode)
-	http.DefaultServeMux = new(http.ServeMux)
 }
 
 // PUT
@@ -252,7 +239,6 @@ func TestPutWithError(t *testing.T) {
 	assert.Equal(t, nil, err)
 	defer resp.Body.Close()
 	assert.Equal(t, http.StatusInternalServerError, resp.StatusCode)
-	http.DefaultServeMux = new(http.ServeMux)
 }
 
 func TestPutWithoutError(t *testing.T) {
@@ -269,7 +255,6 @@ func TestPutWithoutError(t *testing.T) {
 	actual, err := ioutil.ReadAll(resp.Body)
 	assert.Equal(t, nil, err)
 	assert.Equal(t, "\"some PUT info1\"", string(actual))
-	http.DefaultServeMux = new(http.ServeMux)
 }
 
 func TestPutWithNotAllowed(t *testing.T) {
@@ -283,19 +268,16 @@ func TestPutWithNotAllowed(t *testing.T) {
 	assert.Equal(t, nil, err)
 	defer resp.Body.Close()
 	assert.Equal(t, http.StatusMethodNotAllowed, resp.StatusCode)
-	http.DefaultServeMux = new(http.ServeMux)
 
 	resp, err = http.Post(server.URL+TestEndpoint, "application/json", nil)
 	assert.Equal(t, nil, err)
 	defer resp.Body.Close()
 	assert.Equal(t, http.StatusMethodNotAllowed, resp.StatusCode)
-	http.DefaultServeMux = new(http.ServeMux)
 
 	resp, err = doRequest("DELETE", server, data)
 	assert.Equal(t, nil, err)
 	defer resp.Body.Close()
 	assert.Equal(t, http.StatusMethodNotAllowed, resp.StatusCode)
-	http.DefaultServeMux = new(http.ServeMux)
 }
 
 // DELETE
@@ -331,7 +313,6 @@ func TestDeleteWithError(t *testing.T) {
 	assert.Equal(t, nil, err)
 	defer resp.Body.Close()
 	assert.Equal(t, http.StatusInternalServerError, resp.StatusCode)
-	http.DefaultServeMux = new(http.ServeMux)
 }
 
 func TestDeleteWithoutError(t *testing.T) {
@@ -348,7 +329,6 @@ func TestDeleteWithoutError(t *testing.T) {
 	actual, err := ioutil.ReadAll(resp.Body)
 	assert.Equal(t, nil, err)
 	assert.Equal(t, "\"some DEL info1\"", string(actual))
-	http.DefaultServeMux = new(http.ServeMux)
 }
 
 func TestDeleteWithNotAllowed(t *testing.T) {
@@ -362,17 +342,14 @@ func TestDeleteWithNotAllowed(t *testing.T) {
 	assert.Equal(t, nil, err)
 	defer resp.Body.Close()
 	assert.Equal(t, http.StatusMethodNotAllowed, resp.StatusCode)
-	http.DefaultServeMux = new(http.ServeMux)
 
 	resp, err = http.Post(server.URL+TestEndpoint, "application/json", nil)
 	assert.Equal(t, nil, err)
 	defer resp.Body.Close()
 	assert.Equal(t, http.StatusMethodNotAllowed, resp.StatusCode)
-	http.DefaultServeMux = new(http.ServeMux)
 
 	resp, err = doRequest("PUT", server, data)
 	assert.Equal(t, nil, err)
 	defer resp.Body.Close()
 	assert.Equal(t, http.StatusMethodNotAllowed, resp.StatusCode)
-	http.DefaultServeMux = new(http.ServeMux)
 }
