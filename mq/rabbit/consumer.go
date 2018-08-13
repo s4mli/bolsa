@@ -58,7 +58,7 @@ func (c *Consumer) Run() {
 	for i := 0; i < c.qWorkers; i++ {
 		go func() {
 			if ready, ok := c.ready.Load().(bool); ok && ready {
-				consume(c.qChan, c.qName, c.handler)
+				consume(c.logger, c.qChan, c.qName, c.handler)
 			}
 		}()
 	}

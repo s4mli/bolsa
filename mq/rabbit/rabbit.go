@@ -18,7 +18,7 @@ func connect(logger logging.Logger, user, password, uri string, reconnect reconn
 	retry := 0
 	for {
 		if qConn, err = amqp.Dial(fmt.Sprintf("amqp://%s:%s@%s/", user, password, uri)); err != nil {
-			logger.Errorf("connect q failed ( %d, %s )", retry, err.Error())
+			logger.Errorf("connect failed ( %d, %s )", retry, err.Error())
 			retry++
 			time.Sleep(common.RandomDuration(retry))
 		} else {
@@ -30,7 +30,7 @@ func connect(logger logging.Logger, user, password, uri string, reconnect reconn
 	for {
 		var err error = nil
 		if qChan, err = qConn.Channel(); err != nil {
-			logger.Errorf("create channel failed ( %d, %s )", retry, err.Error())
+			logger.Errorf("channel create failed ( %d, %s )", retry, err.Error())
 			retry++
 			time.Sleep(common.RandomDuration(retry))
 		} else {
@@ -41,13 +41,13 @@ func connect(logger logging.Logger, user, password, uri string, reconnect reconn
 	// multiple consumers , each one is relatively slow due to mysql insert
 	// so set count to 30 to give it a go
 	if err := qChan.Qos(30, 0, true); err != nil {
-		logger.Errorf("qos channel failed ( %s )", err.Error())
+		logger.Errorf("channel qos failed ( %s )", err.Error())
 	}
 
 	// reconnect when connection dropped
 	go func() {
 		if err := <-qConn.NotifyClose(make(chan *amqp.Error)); err != nil {
-			logger.Errorf("q connection dropped ( %s ), reconnecting", err.Error())
+			logger.Errorf("connection dropped ( %s ), reconnecting", err.Error())
 			reconnect(user, password, uri)
 		}
 	}()
@@ -58,7 +58,7 @@ func connect(logger logging.Logger, user, password, uri string, reconnect reconn
 type MessageHandler func([]byte) error
 
 func (mh MessageHandler) handle(body []byte) error { return mh(body) }
-func consume(qChan *amqp.Channel, qName string, handler MessageHandler) error {
+func consume(logger logging.Logger, qChan *amqp.Channel, qName string, handler MessageHandler) error {
 	if msgCh, err := qChan.Consume(qName,
 		"",
 		false,
@@ -69,25 +69,40 @@ func consume(qChan *amqp.Channel, qName string, handler MessageHandler) error {
 	} else {
 		for m := range msgCh {
 			if err := handler.handle(m.Body); err != nil {
-				m.Nack(false, true)
+				logger.Errorf("handle message ( %s ) failed: %s", string(m.Body), err.Error())
+				if e := m.Nack(false, true); e != nil {
+					logger.Errorf("nack ( %s ) failed: %s", string(m.Body), e.Error())
+				}
 			} else {
-				m.Ack(false)
+				logger.Errorf("handle message ( %s ) succeed", string(m.Body))
+				if e := m.Ack(false); e != nil {
+					logger.Errorf("ack ( %s ) failed: %s", string(m.Body), e.Error())
+				}
 			}
 		}
 		return nil
 	}
 }
 
-func retrieve(qChan *amqp.Channel, qName string, labor model.Labor) error {
+func retrieve(logger logging.Logger, qChan *amqp.Channel, qName string, labor model.Labor) error {
 	if m, ok, err := qChan.Get(qName, false); ok {
-		if _, err := labor.Work(m.Body); err != nil {
-			m.Nack(false, true)
+		if r, err := labor.Work(m.Body); err != nil {
+			logger.Errorf("handle message ( %s ) failed: %s", string(m.Body), err.Error())
+			if e := m.Nack(false, true); e != nil {
+				logger.Errorf("nack ( %s ) failed: %s", string(m.Body), e.Error())
+			}
 			return err
 		} else {
-			m.Ack(false)
-			return nil
+			logger.Errorf("handle message ( %s ) succeed: %+v", string(m.Body), r)
+			if e := m.Ack(false); e != nil {
+				logger.Errorf("ack ( %s ) failed: %s", string(m.Body), e.Error())
+				return e
+			} else {
+				return nil
+			}
 		}
 	} else {
+		logger.Errorf("retrieve failed: %s", err.Error())
 		return err
 	}
 }

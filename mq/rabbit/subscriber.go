@@ -30,7 +30,7 @@ func (s *Subscriber) exit(chan model.Done) error {
 // but according to RabbitMQ, we really should use Consume instead.
 func (s *Subscriber) consume(labor model.Labor) error {
 	if ready, ok := s.ready.Load().(bool); ok && ready {
-		return retrieve(s.qChan, s.qName, labor)
+		return retrieve(s.Logger, s.qChan, s.qName, labor)
 	} else {
 		return nil
 	}
