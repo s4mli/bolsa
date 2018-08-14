@@ -7,10 +7,9 @@ import (
 	"net/http"
 	"net/url"
 	"os"
-	"os/signal"
-	"syscall"
 	"time"
 
+	"github.com/samwooo/bolsa/common"
 	"github.com/samwooo/bolsa/logging"
 )
 
@@ -43,6 +42,7 @@ type deleteSupported interface {
 }
 
 type API struct {
+	ctx    context.Context
 	logger logging.Logger
 	mux    *http.ServeMux
 }
@@ -142,36 +142,24 @@ func (api *API) RegisterResource(resource interface{}, paths ...string) *API {
 }
 
 func (api *API) ServeHTTP(w http.ResponseWriter, r *http.Request) { api.mux.ServeHTTP(w, r) }
-func (api *API) Start(ctx context.Context, port int) {
+func (api *API) Start(port int) {
 	server := http.Server{Addr: fmt.Sprintf(":%d", port), Handler: api}
-	sig := make(chan os.Signal, 1)
-	signal.Notify(sig, syscall.SIGHUP, syscall.SIGINT, syscall.SIGILL, syscall.SIGSYS,
-		syscall.SIGTERM, syscall.SIGTRAP, syscall.SIGQUIT, syscall.SIGABRT)
-
 	shutdown := func() {
-		if err := server.Shutdown(ctx); err != nil {
+		if err := server.Shutdown(api.ctx); err != nil {
 			api.logger.Errorf("shutdown failed: %s", err.Error())
 		} else {
 			api.logger.Info("stopped")
 		}
 	}
-
-	go func() {
-		for {
-			select {
-			case <-ctx.Done():
-				api.logger.Info("⏳ cancellation, server is quiting...")
-				shutdown()
-				return
-			case s := <-sig:
-				api.logger.Infof("⏳ signal ( %+v ) server is quiting...", s)
-				shutdown()
-				return
-			default:
-				time.Sleep(time.Millisecond * 10)
-			}
-		}
-	}()
+	common.TerminateIf(api.ctx,
+		func() {
+			api.logger.Info("⏳ cancellation, server is quiting...")
+			shutdown()
+		},
+		func(s os.Signal) {
+			api.logger.Infof("⏳ signal ( %+v ) server is quiting...", s)
+			shutdown()
+		})
 
 	api.logger.Infof("listening on 0.0.0.0:%d", port)
 	if err := server.ListenAndServe(); err != http.ErrServerClosed {
@@ -179,6 +167,6 @@ func (api *API) Start(ctx context.Context, port int) {
 	}
 }
 
-func NewAPI(logger logging.Logger) *API {
-	return &API{logger, http.NewServeMux()}
+func NewAPI(ctx context.Context, logger logging.Logger) *API {
+	return &API{ctx, logger, http.NewServeMux()}
 }

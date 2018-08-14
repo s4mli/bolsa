@@ -3,11 +3,9 @@ package rabbit
 import (
 	"context"
 	"os"
-	"os/signal"
 	"sync/atomic"
-	"syscall"
-	"time"
 
+	"github.com/samwooo/bolsa/common"
 	"github.com/samwooo/bolsa/logging"
 	"github.com/streadway/amqp"
 )
@@ -23,9 +21,9 @@ type Consumer struct {
 	ready    atomic.Value
 }
 
-func (c *Consumer) connect(user, password, uri string) {
+func (c *Consumer) connect(qUser, qPassword, qUri string) {
 	c.ready.Store(false)
-	c.qConn, c.qChan = connect(c.logger, user, password, uri, c.connect)
+	c.qConn, c.qChan = connect(c.logger, qUser, qPassword, qUri, c.connect)
 	c.ready.Store(true)
 }
 
@@ -35,25 +33,15 @@ func (c *Consumer) Close() {
 }
 
 func (c *Consumer) Run() {
-	sig := make(chan os.Signal, 1)
-	signal.Notify(sig, syscall.SIGHUP, syscall.SIGINT, syscall.SIGILL, syscall.SIGSYS,
-		syscall.SIGTERM, syscall.SIGTRAP, syscall.SIGQUIT, syscall.SIGABRT)
-	go func() {
-		for {
-			select {
-			case <-c.ctx.Done():
-				c.logger.Infof("⏳ cancellation, consumer ( %s ) quiting...", c.qName)
-				c.Close()
-				return
-			case s := <-sig:
-				c.logger.Infof("⏳ signal ( %+v ) consumer ( %s ) quiting...", s, c.qName)
-				c.Close()
-				return
-			default:
-				time.Sleep(time.Millisecond * 10)
-			}
-		}
-	}()
+	common.TerminateIf(c.ctx,
+		func() {
+			c.logger.Infof("⏳ cancellation, consumer ( %s ) quiting...", c.qName)
+			c.Close()
+		},
+		func(s os.Signal) {
+			c.logger.Infof("⏳ signal ( %+v ) consumer ( %s ) quiting...", s, c.qName)
+			c.Close()
+		})
 
 	for i := 0; i < c.qWorkers; i++ {
 		go func() {

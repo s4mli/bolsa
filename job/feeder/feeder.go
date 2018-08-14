@@ -4,12 +4,11 @@ import (
 	"context"
 	"fmt"
 	"os"
-	"os/signal"
 	"runtime"
 	"sync/atomic"
-	"syscall"
 	"time"
 
+	"github.com/samwooo/bolsa/common"
 	"github.com/samwooo/bolsa/job/feeder/imp"
 	"github.com/samwooo/bolsa/job/model"
 	"github.com/samwooo/bolsa/logging"
@@ -91,25 +90,15 @@ func newFeeder(ctx context.Context, logger logging.Logger, workers int, RIPRight
 	jf := Feeder{logger, workers,
 		make(chan model.Done, workers),
 		initClosed(), f}
-	sig, waitress := make(chan os.Signal, 1), make(chan bool, workers)
-	signal.Notify(sig, syscall.SIGHUP, syscall.SIGINT, syscall.SIGILL, syscall.SIGSYS,
-		syscall.SIGTERM, syscall.SIGTRAP, syscall.SIGQUIT, syscall.SIGABRT)
-	go func() {
-		for {
-			select {
-			case <-ctx.Done():
-				jf.logger.Infof("⏳ cancellation, feeder %s quiting...", jf.Name())
-				jf.Close()
-				return
-			case s := <-sig:
-				jf.logger.Infof("⏳ signal ( %+v ) feeder %s quiting...", s, jf.Name())
-				jf.Close()
-				return
-			default:
-				time.Sleep(time.Millisecond * 10)
-			}
-		}
-	}()
+	common.TerminateIf(ctx,
+		func() {
+			jf.logger.Infof("⏳ cancellation, feeder %s quiting...", jf.Name())
+			jf.Close()
+		},
+		func(s os.Signal) {
+			jf.logger.Infof("⏳ signal ( %+v ) feeder %s quiting...", s, jf.Name())
+			jf.Close()
+		})
 
 	go func() {
 		if jf.feederImp != nil && !jf.Closed() {
@@ -126,6 +115,7 @@ func newFeeder(ctx context.Context, logger logging.Logger, workers int, RIPRight
 		}
 	}()
 
+	waitress := make(chan bool, workers)
 	go func() {
 		for i := 0; i < jf.workers; i++ {
 			<-waitress

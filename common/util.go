@@ -1,14 +1,41 @@
 package common
 
 import (
+	"context"
 	"fmt"
 	"math/rand"
+	"os"
+	"os/signal"
 	"reflect"
 	"strings"
+	"syscall"
 	"time"
 
 	"github.com/samwooo/bolsa/logging"
 )
+
+type onCancel func()
+type onSignal func(os.Signal)
+
+func TerminateIf(ctx context.Context, onCancel onCancel, onSignal onSignal) {
+	sig := make(chan os.Signal, 1)
+	signal.Notify(sig, syscall.SIGHUP, syscall.SIGINT, syscall.SIGILL, syscall.SIGSYS,
+		syscall.SIGTERM, syscall.SIGTRAP, syscall.SIGQUIT, syscall.SIGABRT)
+	go func() {
+		for {
+			select {
+			case <-ctx.Done():
+				onCancel()
+				return
+			case s := <-sig:
+				onSignal(s)
+				return
+			default:
+				time.Sleep(time.Millisecond * 10)
+			}
+		}
+	}()
+}
 
 func ErrorFromString(s string) error {
 	if s == "" {

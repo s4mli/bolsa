@@ -10,6 +10,8 @@ import (
 	"strings"
 	"testing"
 
+	"context"
+
 	"github.com/samwooo/bolsa/logging"
 	"github.com/stretchr/testify/assert"
 )
@@ -18,10 +20,11 @@ const (
 	TestEndpoint = "/test"
 )
 
-var _ = logging.DefaultLogger("", logging.LogLevelFromString("INFO"), 100)
+var _ = logging.DefaultLogger("", logging.LogLevelFromString("ERROR"), 100)
 
 func ensureServerIsRunning(r interface{}) *httptest.Server {
-	return httptest.NewServer(NewAPI(logging.GetLogger("")).RegisterResource(r, TestEndpoint))
+	return httptest.NewServer(NewAPI(context.Background(), logging.GetLogger("")).RegisterResource(r,
+		TestEndpoint))
 }
 
 func doRequest(method string, s *httptest.Server, data map[string]interface{}) (*http.Response, error) {

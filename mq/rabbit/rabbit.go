@@ -12,12 +12,12 @@ import (
 
 type reconnect func(user, password, uri string)
 
-func connect(logger logging.Logger, user, password, uri string, reconnect reconnect) (
+func connect(logger logging.Logger, qUser, qPassword, qUri string, reconnect reconnect) (
 	qConn *amqp.Connection, qChan *amqp.Channel) {
 	var err error = nil
 	retry := 0
 	for {
-		if qConn, err = amqp.Dial(fmt.Sprintf("amqp://%s:%s@%s/", user, password, uri)); err != nil {
+		if qConn, err = amqp.Dial(fmt.Sprintf("amqp://%s:%s@%s/", qUser, qPassword, qUri)); err != nil {
 			logger.Errorf("connect failed ( %d, %s )", retry, err.Error())
 			retry++
 			time.Sleep(common.RandomDuration(retry))
@@ -48,7 +48,7 @@ func connect(logger logging.Logger, user, password, uri string, reconnect reconn
 	go func() {
 		if err := <-qConn.NotifyClose(make(chan *amqp.Error)); err != nil {
 			logger.Errorf("connection dropped ( %s ), reconnecting", err.Error())
-			reconnect(user, password, uri)
+			reconnect(qUser, qPassword, qUri)
 		}
 	}()
 
@@ -69,14 +69,14 @@ func consume(logger logging.Logger, qChan *amqp.Channel, qName string, handler M
 	} else {
 		for m := range msgCh {
 			if err := handler.handle(m.Body); err != nil {
-				logger.Errorf("handle message ( %s ) failed: %s", string(m.Body), err.Error())
+				logger.Errorf("handle message ( %s ) failed ( %s )", string(m.Body), err.Error())
 				if e := m.Nack(false, true); e != nil {
 					logger.Errorf("nack ( %s ) failed: %s", string(m.Body), e.Error())
 				}
 			} else {
-				logger.Errorf("handle message ( %s ) succeed", string(m.Body))
+				logger.Debugf("handle message ( %s ) succeed", string(m.Body))
 				if e := m.Ack(false); e != nil {
-					logger.Errorf("ack ( %s ) failed: %s", string(m.Body), e.Error())
+					logger.Errorf("ack ( %s ) failed ( %s )", string(m.Body), e.Error())
 				}
 			}
 		}
@@ -87,22 +87,22 @@ func consume(logger logging.Logger, qChan *amqp.Channel, qName string, handler M
 func retrieve(logger logging.Logger, qChan *amqp.Channel, qName string, labor model.Labor) error {
 	if m, ok, err := qChan.Get(qName, false); ok {
 		if r, err := labor.Work(m.Body); err != nil {
-			logger.Errorf("handle message ( %s ) failed: %s", string(m.Body), err.Error())
+			logger.Errorf("handle message ( %s ) failed ( %s )", string(m.Body), err.Error())
 			if e := m.Nack(false, true); e != nil {
 				logger.Errorf("nack ( %s ) failed: %s", string(m.Body), e.Error())
 			}
 			return err
 		} else {
-			logger.Errorf("handle message ( %s ) succeed: %+v", string(m.Body), r)
+			logger.Debugf("handle message ( %s ) succeed ( %+v )", string(m.Body), r)
 			if e := m.Ack(false); e != nil {
-				logger.Errorf("ack ( %s ) failed: %s", string(m.Body), e.Error())
+				logger.Errorf("ack ( %s ) failed ( %s )", string(m.Body), e.Error())
 				return e
 			} else {
 				return nil
 			}
 		}
 	} else {
-		logger.Errorf("retrieve failed: %s", err.Error())
+		logger.Errorf("retrieve failed ( %s )", err.Error())
 		return err
 	}
 }
