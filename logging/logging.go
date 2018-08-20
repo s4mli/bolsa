@@ -3,6 +3,7 @@ package logging
 import (
 	"fmt"
 	"strings"
+	"time"
 )
 
 type LogLevel int
@@ -98,4 +99,12 @@ func DefaultLogger(prefix string, lvl LogLevel, metricThreshold int32) Logger {
 
 func GetLogger(context string) Logger {
 	return rootLogger.GetChild(context)
+}
+
+// log slow actions such as db query etc.
+func LogMetrics(logger Logger, action string, start time.Time) {
+	logger.Warn(MetricsInfo{
+		Action:   action,
+		TimeCost: time.Since(start).Seconds(),
+	})
 }
