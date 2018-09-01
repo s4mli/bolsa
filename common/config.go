@@ -89,7 +89,6 @@ func LoadConfig(app, env string, configFile string, config interface{}) {
 									panic(ErrorToString(errs))
 								}
 							}
-							fmt.Println(app, " [ ", env, " ]", config)
 						}
 					}
 				}
