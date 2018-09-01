@@ -55,9 +55,9 @@ func connect(logger logging.Logger, qUser, qPassword, qUri string, reconnect rec
 	return
 }
 
-type MessageHandler func([]byte) error
+type MessageHandler func(amqp.Table, []byte) error
 
-func (mh MessageHandler) handle(body []byte) error { return mh(body) }
+func (mh MessageHandler) handle(headers amqp.Table, body []byte) error { return mh(headers, body) }
 func consume(logger logging.Logger, qChan *amqp.Channel, qName string, handler MessageHandler) error {
 	if msgCh, err := qChan.Consume(qName,
 		"",
@@ -68,15 +68,16 @@ func consume(logger logging.Logger, qChan *amqp.Channel, qName string, handler M
 		return err
 	} else {
 		for m := range msgCh {
-			if err := handler.handle(m.Body); err != nil {
-				logger.Errorf("handle message ( %s ) failed ( %s )", string(m.Body), err.Error())
+			// only with headers we can do TTL DLX ... and from [x-death] then we can implement retry
+			if err := handler.handle(m.Headers, m.Body); err != nil {
+				logger.Errorf("handle message ( %+v ) ( %s ) failed ( %s )", m.Headers, string(m.Body), err.Error())
 				if e := m.Nack(false, true); e != nil {
-					logger.Errorf("nack ( %s ) failed: %s", string(m.Body), e.Error())
+					logger.Errorf("nack ( %+v ) ( %s ) failed: %s", m.Headers, string(m.Body), e.Error())
 				}
 			} else {
-				logger.Debugf("handle message ( %s ) succeed", string(m.Body))
+				logger.Debugf("handle message ( %+v ) ( %s ) succeed", m.Headers, string(m.Body))
 				if e := m.Ack(false); e != nil {
-					logger.Errorf("ack ( %s ) failed ( %s )", string(m.Body), e.Error())
+					logger.Errorf("ack ( %+v ) ( %s ) failed ( %s )", m.Headers, string(m.Body), e.Error())
 				}
 			}
 		}
@@ -86,16 +87,16 @@ func consume(logger logging.Logger, qChan *amqp.Channel, qName string, handler M
 
 func retrieve(logger logging.Logger, qChan *amqp.Channel, qName string, labor model.Labor) error {
 	if m, ok, err := qChan.Get(qName, false); ok {
-		if r, err := labor.Work(m.Body); err != nil {
-			logger.Errorf("handle message ( %s ) failed ( %s )", string(m.Body), err.Error())
+		if r, err := labor.Work(m); err != nil {
+			logger.Errorf("handle message ( %+v ) ( %s ) failed ( %s )", m.Headers, string(m.Body), err.Error())
 			if e := m.Nack(false, true); e != nil {
-				logger.Errorf("nack ( %s ) failed: %s", string(m.Body), e.Error())
+				logger.Errorf("nack ( %+v ) ( %s ) failed: %s", m.Headers, string(m.Body), e.Error())
 			}
 			return err
 		} else {
-			logger.Debugf("handle message ( %s ) succeed ( %+v )", string(m.Body), r)
+			logger.Debugf("handle message ( %+v ) ( %s ) succeed ( %+v )", m.Headers, string(m.Body), r)
 			if e := m.Ack(false); e != nil {
-				logger.Errorf("ack ( %s ) failed ( %s )", string(m.Body), e.Error())
+				logger.Errorf("ack ( %+v ) ( %s ) failed ( %s )", m.Headers, string(m.Body), e.Error())
 				return e
 			} else {
 				return nil

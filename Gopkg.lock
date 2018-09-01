@@ -2,7 +2,7 @@
 
 
 [[projects]]
-  digest = "1:0abb6ea44cd28456d9407ae23feb57b311be90c2348ff51715482c4cb376f00d"
+  digest = "1:1c9c2b4e2c5564936a93f2d16b5f6bc101a210e6511adff8131a24f3bd944d17"
   name = "github.com/aws/aws-sdk-go"
   packages = [
     "aws",
@@ -35,8 +35,8 @@
     "service/sts",
   ]
   pruneopts = "UT"
-  revision = "ca229c7730be9278527fbb287f5a26c91e328d86"
-  version = "v1.15.15"
+  revision = "04abd557eeaab3cfdded45467eea00fc03db9cb9"
+  version = "v1.15.26"
 
 [[projects]]
   digest = "1:ffe9824d294da03b391f44e1ae8281281b4afc1bdaa9588c9097785e3af10cec"
@@ -47,12 +47,12 @@
   version = "v1.1.1"
 
 [[projects]]
-  digest = "1:fe8a03a8222d5b913f256972933d26d24ad7c8286692a42943bc01633cc8fce3"
+  digest = "1:5abd6a22805b1919f6a6bca0ae58b13cef1f3412812f38569978f43ef02743d4"
   name = "github.com/go-ini/ini"
   packages = ["."]
   pruneopts = "UT"
-  revision = "358ee7663966325963d4e8b2e1fbd570c5195153"
-  version = "v1.38.1"
+  revision = "5cf292cae48347c2490ac1a58fe36735fb78df7e"
+  version = "v1.38.2"
 
 [[projects]]
   digest = "1:adea5a94903eb4384abef30f3d878dc9ff6b6b5b0722da25b82e5169216dfb61"
@@ -71,14 +71,14 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:37ce7d7d80531b227023331002c0d42b4b4b291a96798c82a049d03a54ba79e4"
+  digest = "1:8ef506fc2bb9ced9b151dafa592d4046063d744c646c1bbe801982ce87e4bc24"
   name = "github.com/lib/pq"
   packages = [
     ".",
     "oid",
   ]
   pruneopts = "UT"
-  revision = "90697d60dd844d5ef6ff15135d0203f65d2f53b8"
+  revision = "4ded0e9383f75c197b3a2aaa6d590ac52df6fd79"
 
 [[projects]]
   digest = "1:0028cb19b2e4c3112225cd871870f2d9cf49b9b4276531f03438a88e94be86fe"
