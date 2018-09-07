@@ -52,6 +52,10 @@ func (c *Consumer) Run() {
 	}
 }
 
+func (c *Consumer) Publish(exchange, topic string, body []byte) error {
+	return publish(c.logger, c.qChan, exchange, topic, body)
+}
+
 func NewConsumer(ctx context.Context, logger logging.Logger, qName, qUser, qPassword, qUri string, qWorkers int,
 	handler MessageHandler) *Consumer {
 	c := &Consumer{ctx: ctx, logger: logger, qName: qName, qWorkers: qWorkers, handler: handler, ready: atomic.Value{}}

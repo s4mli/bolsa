@@ -71,8 +71,8 @@ func consume(logger logging.Logger, qChan *amqp.Channel, qName string, handler M
 			// only with headers we can do TTL DLX ... and from [x-death] then we can implement retry
 			if err := handler.handle(m.Headers, m.Body); err != nil {
 				logger.Errorf("handle message ( %+v ) ( %s ) failed ( %s )", m.Headers, string(m.Body), err.Error())
-				if e := m.Nack(false, true); e != nil {
-					logger.Errorf("nack ( %+v ) ( %s ) failed: %s", m.Headers, string(m.Body), e.Error())
+				if e := m.Nack(false, false); e != nil {
+					logger.Errorf("nack ( %+v ) ( %s ) failed ( %s )", m.Headers, string(m.Body), e.Error())
 				}
 			} else {
 				logger.Debugf("handle message ( %+v ) ( %s ) succeed", m.Headers, string(m.Body))
@@ -89,8 +89,8 @@ func retrieve(logger logging.Logger, qChan *amqp.Channel, qName string, labor mo
 	if m, ok, err := qChan.Get(qName, false); ok {
 		if r, err := labor.Work(m); err != nil {
 			logger.Errorf("handle message ( %+v ) ( %s ) failed ( %s )", m.Headers, string(m.Body), err.Error())
-			if e := m.Nack(false, true); e != nil {
-				logger.Errorf("nack ( %+v ) ( %s ) failed: %s", m.Headers, string(m.Body), e.Error())
+			if e := m.Nack(false, false); e != nil {
+				logger.Errorf("nack ( %+v ) ( %s ) failed ( %s )", m.Headers, string(m.Body), e.Error())
 			}
 			return err
 		} else {
@@ -105,5 +105,23 @@ func retrieve(logger logging.Logger, qChan *amqp.Channel, qName string, labor mo
 	} else {
 		logger.Errorf("retrieve failed ( %s )", err.Error())
 		return err
+	}
+}
+
+func publish(logger logging.Logger, qChan *amqp.Channel, exchange, topic string, body []byte) error {
+	if err := qChan.Publish(
+		exchange,
+		topic,
+		false,
+		false,
+		amqp.Publishing{
+			ContentType: "text/plain",
+			Body:        body,
+		}); err != nil {
+		logger.Errorf("publish ( %s ) to ( %s,%s ) failed ( %s )", string(body), exchange, topic, err.Error())
+		return err
+	} else {
+		logger.Debugf("publish ( %s ) to ( %s,%s ) succeed", string(body), exchange, topic)
+		return nil
 	}
 }
