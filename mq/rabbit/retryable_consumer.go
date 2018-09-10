@@ -11,7 +11,7 @@ import (
 // Retryable RabbitMQ Consumer //
 // Requires a bit of Ops works:
 // 1: Topic Exchange=E with Qs
-// 2: Each Q has DLX=DLE and DLK but NOT TTL which by calling Nack(requeue:false) msg will be move into DLE immediately
+// 2: Each Q has DLX=DLE and DLK but NOT TTL which msg will be move into DLE immediately by calling Nack(requeue:false)
 // 3: DL Topic Exchange=DLE with DLQs
 // 4: Each DLQ has a TTL and DLX=E with DLK which will redirect msg back to Qs when TTL expired, see x-death in headers
 type RetryableConsumer struct {

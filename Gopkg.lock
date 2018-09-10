@@ -2,7 +2,6 @@
 
 
 [[projects]]
-  digest = "1:1c9c2b4e2c5564936a93f2d16b5f6bc101a210e6511adff8131a24f3bd944d17"
   name = "github.com/aws/aws-sdk-go"
   packages = [
     "aws",
@@ -32,121 +31,88 @@
     "private/protocol/rest",
     "private/protocol/xml/xmlutil",
     "service/sqs",
-    "service/sts",
+    "service/sts"
   ]
-  pruneopts = "UT"
-  revision = "04abd557eeaab3cfdded45467eea00fc03db9cb9"
-  version = "v1.15.26"
+  revision = "9333060a8d957db41bff1c80603a802aa674fad8"
+  version = "v1.15.30"
 
 [[projects]]
-  digest = "1:ffe9824d294da03b391f44e1ae8281281b4afc1bdaa9588c9097785e3af10cec"
   name = "github.com/davecgh/go-spew"
   packages = ["spew"]
-  pruneopts = "UT"
   revision = "8991bc29aa16c548c550c7ff78260e27b9ab7c73"
   version = "v1.1.1"
 
 [[projects]]
-  digest = "1:5abd6a22805b1919f6a6bca0ae58b13cef1f3412812f38569978f43ef02743d4"
   name = "github.com/go-ini/ini"
   packages = ["."]
-  pruneopts = "UT"
   revision = "5cf292cae48347c2490ac1a58fe36735fb78df7e"
   version = "v1.38.2"
 
 [[projects]]
-  digest = "1:adea5a94903eb4384abef30f3d878dc9ff6b6b5b0722da25b82e5169216dfb61"
   name = "github.com/go-sql-driver/mysql"
   packages = ["."]
-  pruneopts = "UT"
   revision = "d523deb1b23d913de5bdada721a6071e71283618"
   version = "v1.4.0"
 
 [[projects]]
-  digest = "1:e22af8c7518e1eab6f2eab2b7d7558927f816262586cd6ed9f349c97a6c285c4"
   name = "github.com/jmespath/go-jmespath"
   packages = ["."]
-  pruneopts = "UT"
   revision = "0b12d6b5"
 
 [[projects]]
-  branch = "master"
-  digest = "1:8ef506fc2bb9ced9b151dafa592d4046063d744c646c1bbe801982ce87e4bc24"
   name = "github.com/lib/pq"
   packages = [
     ".",
-    "oid",
+    "oid"
   ]
-  pruneopts = "UT"
   revision = "4ded0e9383f75c197b3a2aaa6d590ac52df6fd79"
+  version = "v1.0.0"
 
 [[projects]]
-  digest = "1:0028cb19b2e4c3112225cd871870f2d9cf49b9b4276531f03438a88e94be86fe"
   name = "github.com/pmezard/go-difflib"
   packages = ["difflib"]
-  pruneopts = "UT"
   revision = "792786c7400a136282c1664665ae0a8db921c6c2"
   version = "v1.0.0"
 
 [[projects]]
   branch = "master"
-  digest = "1:0c088044c1c1ee83e723692442df4fec9b3f2e57f7a99773485c97adfbc31695"
   name = "github.com/streadway/amqp"
   packages = ["."]
-  pruneopts = "UT"
   revision = "70e15c650864f4fc47f5d3c82ea117285480895d"
 
 [[projects]]
-  digest = "1:18752d0b95816a1b777505a97f71c7467a8445b8ffb55631a7bf779f6ba4fa83"
   name = "github.com/stretchr/testify"
   packages = ["assert"]
-  pruneopts = "UT"
   revision = "f35b8ab0b5a2cef36673838d662e249dd9c94686"
   version = "v1.2.2"
 
 [[projects]]
-  digest = "1:c25289f43ac4a68d88b02245742347c94f1e108c534dda442188015ff80669b3"
   name = "google.golang.org/appengine"
   packages = ["cloudsql"]
-  pruneopts = "UT"
   revision = "b1f26356af11148e710935ed1ac8a7f5702c7612"
   version = "v1.1.0"
 
 [[projects]]
   branch = "v2"
-  digest = "1:988de7520a09024d5d94cd99bd545afbf194893994ec759b1cda0a0bbb6adb80"
   name = "gopkg.in/mgo.v2"
   packages = [
     ".",
     "bson",
     "internal/json",
     "internal/sasl",
-    "internal/scram",
+    "internal/scram"
   ]
-  pruneopts = "UT"
   revision = "9856a29383ce1c59f308dd1cf0363a79b5bef6b5"
 
 [[projects]]
-  digest = "1:342378ac4dcb378a5448dd723f0784ae519383532f5e70ade24132c4c8693202"
   name = "gopkg.in/yaml.v2"
   packages = ["."]
-  pruneopts = "UT"
   revision = "5420a8b6744d3b0345ab293f6fcba19c978f1183"
   version = "v2.2.1"
 
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  input-imports = [
-    "github.com/aws/aws-sdk-go/aws",
-    "github.com/aws/aws-sdk-go/aws/session",
-    "github.com/aws/aws-sdk-go/service/sqs",
-    "github.com/go-sql-driver/mysql",
-    "github.com/lib/pq",
-    "github.com/streadway/amqp",
-    "github.com/stretchr/testify/assert",
-    "gopkg.in/mgo.v2",
-    "gopkg.in/yaml.v2",
-  ]
+  inputs-digest = "4d48466948fc02119475abe583b8e02457f2ad207fead7d0c27761dc1f1422e7"
   solver-name = "gps-cdcl"
   solver-version = 1
