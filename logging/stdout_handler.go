@@ -24,5 +24,5 @@ func (h *stdoutHandler) Emit(lvl LogLevel, prefix string, msg interface{}) {
 }
 
 func NewStdoutHandler() Handler {
-	return &stdoutHandler{log.New(os.Stdout, "", log.LstdFlags|log.Lshortfile)}
+	return &stdoutHandler{log.New(os.Stdout, "", log.LstdFlags)}
 }
