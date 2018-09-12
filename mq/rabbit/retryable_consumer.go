@@ -42,6 +42,5 @@ func NewRetryableConsumer(ctx context.Context, logger logging.Logger, qName, qUs
 		NewConsumer(ctx, logger, qName, qUser, qPassword, qUri, qWorkers, retryableHandler()),
 		limit,
 	}
-	c.connect(qUser, qPassword, qUri)
 	return c
 }

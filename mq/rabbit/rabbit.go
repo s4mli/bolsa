@@ -22,6 +22,7 @@ func connect(logger logging.Logger, qUser, qPassword, qUri string, reconnect rec
 			retry++
 			time.Sleep(common.RandomDuration(retry))
 		} else {
+			logger.Infof("connection to q %s established.", qUri)
 			break
 		}
 	}
@@ -34,6 +35,7 @@ func connect(logger logging.Logger, qUser, qPassword, qUri string, reconnect rec
 			retry++
 			time.Sleep(common.RandomDuration(retry))
 		} else {
+			logger.Infof("channel to q %s established.", qUri)
 			break
 		}
 	}
