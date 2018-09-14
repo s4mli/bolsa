@@ -2,9 +2,7 @@ package rabbit
 
 import (
 	"fmt"
-	"time"
 
-	"github.com/samwooo/bolsa/common"
 	"github.com/samwooo/bolsa/job/model"
 	"github.com/samwooo/bolsa/logging"
 	"github.com/streadway/amqp"
@@ -12,48 +10,41 @@ import (
 
 type reconnect func(user, password, uri string)
 
-func connect(logger logging.Logger, qUser, qPassword, qUri string, reconnect reconnect) (
-	qConn *amqp.Connection, qChan *amqp.Channel) {
+func connect(logger logging.Logger, qUser, qPassword, qUri string, doReconnect reconnect) (qConn *amqp.Connection,
+	qChan *amqp.Channel) {
 	var err error = nil
 	retry := 0
 	for {
 		if qConn, err = amqp.Dial(fmt.Sprintf("amqp://%s:%s@%s/", qUser, qPassword, qUri)); err != nil {
 			logger.Errorf("connect failed ( %d, %s )", retry, err.Error())
 			retry++
-			time.Sleep(common.RandomDuration(retry))
 		} else {
 			logger.Infof("connection to q %s established.", qUri)
 			break
 		}
 	}
-
 	retry = 0
 	for {
-		var err error = nil
 		if qChan, err = qConn.Channel(); err != nil {
 			logger.Errorf("channel create failed ( %d, %s )", retry, err.Error())
 			retry++
-			time.Sleep(common.RandomDuration(retry))
 		} else {
 			logger.Infof("channel to q %s established.", qUri)
 			break
 		}
 	}
-
 	// multiple consumers , each one is relatively slow due to mysql insert
 	// so set count to 30 to give it a go
 	if err := qChan.Qos(30, 0, true); err != nil {
 		logger.Errorf("channel qos failed ( %s )", err.Error())
 	}
 
-	// reconnect when connection dropped
 	go func() {
 		if err := <-qConn.NotifyClose(make(chan *amqp.Error)); err != nil {
 			logger.Errorf("connection dropped ( %s ), reconnecting", err.Error())
-			reconnect(qUser, qPassword, qUri)
+			doReconnect(qUser, qPassword, qUri)
 		}
 	}()
-
 	return
 }
 

@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"sync/atomic"
+	"time"
 
 	"github.com/samwooo/bolsa/job"
 	"github.com/samwooo/bolsa/job/feeder"
@@ -13,38 +14,47 @@ import (
 )
 
 type Subscriber struct {
-	qConn *amqp.Connection
-	qChan *amqp.Channel
+	qConn atomic.Value
+	qChan atomic.Value
 	qName string
-	ready atomic.Value
 	*job.Job
 }
 
 func (s *Subscriber) exit(chan model.Done) error {
-	s.qConn.Close()
-	s.ready.Store(false)
+	for {
+		if conn, ok := s.qConn.Load().(*amqp.Connection); ok && conn != nil {
+			conn.Close()
+			s.Logger.Infof("subscriber %s closed", s.qName)
+			break
+		} else {
+			s.Logger.Warn("close cast failed")
+			time.Sleep(time.Millisecond * 50)
+		}
+	}
 	return nil
 }
 
 // in order to fit the JobFeeder pattern, here we are using Get fn.
 // but according to RabbitMQ, we really should use Consume instead.
 func (s *Subscriber) consume(labor model.Labor) error {
-	if ready, ok := s.ready.Load().(bool); ok && ready {
-		return retrieve(s.Logger, s.qChan, s.qName, labor)
+	if qChan, ok := s.qChan.Load().(*amqp.Channel); ok && qChan != nil {
+		return retrieve(s.Logger, qChan, s.qName, labor)
 	} else {
-		return nil
+		msg := "consume cast failed"
+		s.Logger.Warn(msg)
+		return fmt.Errorf(msg)
 	}
 }
 
-func (s *Subscriber) connect(user, password, uri string) {
-	s.ready.Store(false)
-	s.qConn, s.qChan = connect(s.Logger, user, password, uri, s.connect)
-	s.ready.Store(true)
+func (s *Subscriber) connect(qUser, qPassword, qUri string) {
+	qConn, qChan := connect(s.Logger, qUser, qPassword, qUri, s.connect)
+	s.qConn.Store(qConn)
+	s.qChan.Store(qChan)
 }
 
 func NewSubscriber(ctx context.Context, logger logging.Logger, qName, qUser, qPassword, qUri string, qWorkers int,
 	labor model.Labor) *Subscriber {
-	s := &Subscriber{qName: qName, ready: atomic.Value{}}
+	s := &Subscriber{qName: qName}
 	s.Job = job.NewJob(logger, fmt.Sprintf("| %s subscriber | ", qName), qWorkers,
 		feeder.NewWorkFeeder(ctx, logger, qWorkers, nil, s.consume, labor, s.exit))
 	s.connect(qUser, qPassword, qUri)
