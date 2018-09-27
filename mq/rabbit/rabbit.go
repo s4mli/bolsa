@@ -39,10 +39,10 @@ func Publish(ctx context.Context, qUser, qPassword, qUri, exchange, topic string
 // 1 Connection with N Consumers per Queue
 func RunConsumer(ctx context.Context, qUser, qPassword, qUri, qName string, prefetchCount, prefetchSize,
 	maxRetries, workers int, handler MessageHandler) {
-	logger := logging.GetLogger(" #" + qName + "# ")
+	logger := logging.GetLogger("")
 	conn := NewConnection(ctx, logger, qUser, qPassword, qUri)
 	for id := 0; id < workers; id++ {
-		c := newRetryableConsumer(id, logger, qName, prefetchCount, prefetchSize, handler, maxRetries)
+		c := newRetryableConsumer(id, logger.GetChild(qName), qName, prefetchCount, prefetchSize, handler, maxRetries)
 		c.run(conn)
 	}
 	conn.start()
@@ -51,9 +51,8 @@ func RunConsumer(ctx context.Context, qUser, qPassword, qUri, qName string, pref
 // N Consumers per Queue reusing Connection
 func RunConsumerUpon(conn *Connection, qName string, prefetchCount, prefetchSize, maxRetries, workers int,
 	handler MessageHandler) {
-	logger := logging.GetLogger(" #" + qName + "# ")
 	for id := 0; id < workers; id++ {
-		c := newRetryableConsumer(id, logger, qName, prefetchCount, prefetchSize, handler, maxRetries)
+		c := newRetryableConsumer(id, logging.GetLogger(qName), qName, prefetchCount, prefetchSize, handler, maxRetries)
 		c.run(conn)
 	}
 	conn.start()

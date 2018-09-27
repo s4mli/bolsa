@@ -33,13 +33,13 @@ func LogLevelFromString(s string) LogLevel {
 func (l LogLevel) String() string {
 	switch l {
 	case DEBUG:
-		return "D"
+		return " ☻ "
 	case INFO:
-		return "I"
+		return " ☺ "
 	case WARN:
-		return "W"
+		return " ☹ "
 	case ERROR:
-		return "E"
+		return " ☠ "
 	default:
 		panic(fmt.Errorf("unknown log level"))
 	}

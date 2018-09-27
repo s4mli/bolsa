@@ -56,7 +56,7 @@ func (c *consumer) run(conn *Connection) {
 		for {
 			select {
 			case <-closed:
-				c.logger.Infof("( %d ) exiting", c.Id)
+				c.logger.Infof("( %d ) terminated", c.Id)
 				return
 			case <-reconnecting:
 				c.logger.Infof("( %d ) wait for reconnecting", c.Id)

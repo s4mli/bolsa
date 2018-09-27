@@ -115,11 +115,11 @@ func NewConnection(ctx context.Context, logger logging.Logger, qUser, qPassword,
 
 	common.TerminateIf(c.ctx,
 		func() {
-			logger.Infof("⏳cancellation, ( %s ) connection closing...", c.qUri)
 			c.stop()
+			logger.Infof("cancellation, ( %s ) connection closed", c.qUri)
 		},
 		func(s os.Signal) {
-			logger.Infof("⏳signal ( %+v ), ( %s ) connection closing...", s, c.qUri)
+			logger.Infof("signal ( %+v ), ( %s ) connection closed", s, c.qUri)
 			c.stop()
 		})
 	return c
