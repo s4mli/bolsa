@@ -2,12 +2,28 @@ package logging
 
 import (
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/samwooo/bolsa/logging/filter"
 	"github.com/samwooo/bolsa/logging/handler"
 	"github.com/samwooo/bolsa/logging/model"
 )
+
+func LogLevelFrom(s string) model.LogLevel {
+	switch strings.ToLower(s) {
+	case "debug":
+		return model.DEBUG
+	case "info":
+		return model.INFO
+	case "warn":
+		return model.WARN
+	case "error":
+		return model.ERROR
+	default:
+		return model.INFO
+	}
+}
 
 type logger struct {
 	prefix  string

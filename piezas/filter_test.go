@@ -7,7 +7,6 @@ import (
 
 	"github.com/samwooo/bolsa/common"
 	"github.com/samwooo/bolsa/logging"
-	"github.com/samwooo/bolsa/logging/model"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -20,7 +19,7 @@ var filterIte = func(k interface{}) (bool, error) {
 }
 
 func testFilterWithError(t *testing.T) {
-	logging.DefaultLogger("", model.LogLevelFromString("ERROR"), 100)
+	logging.DefaultLogger("", logging.LogLevelFrom("ERROR"), 100)
 
 	input := []interface{}{1, 2, 3, 4, 5, 6, 7, 8, "abc"}
 	r := Filter(context.Background(), input, filterIte)
@@ -30,7 +29,7 @@ func testFilterWithError(t *testing.T) {
 }
 
 func testFilterWithoutError(t *testing.T) {
-	logging.DefaultLogger("", model.LogLevelFromString("ERROR"), 100)
+	logging.DefaultLogger("", logging.LogLevelFrom("ERROR"), 100)
 
 	input := []interface{}{1, 2, 3, 4, 5, 6, 7, 8}
 	r := Filter(context.Background(), input, filterIte)

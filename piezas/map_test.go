@@ -7,7 +7,6 @@ import (
 
 	"github.com/samwooo/bolsa/common"
 	"github.com/samwooo/bolsa/logging"
-	"github.com/samwooo/bolsa/logging/model"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -20,7 +19,7 @@ var mapIte = func(k interface{}) (interface{}, error) {
 }
 
 func testMapWithError(t *testing.T) {
-	logging.DefaultLogger("", model.LogLevelFromString("ERROR"), 100)
+	logging.DefaultLogger("", logging.LogLevelFrom("ERROR"), 100)
 
 	input := []interface{}{1, 2, 3, 4, 5, 6, 7, 8, "abc"}
 	r := Map(context.Background(), input, mapIte)
@@ -33,7 +32,7 @@ func testMapWithError(t *testing.T) {
 }
 
 func testMapWithoutError(t *testing.T) {
-	logging.DefaultLogger("", model.LogLevelFromString("ERROR"), 100)
+	logging.DefaultLogger("", logging.LogLevelFrom("ERROR"), 100)
 
 	input := []interface{}{1, 2, 3, 4, 5, 6, 7, 8}
 	r := Map(context.Background(), input, mapIte)

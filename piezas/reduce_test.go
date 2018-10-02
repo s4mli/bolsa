@@ -6,7 +6,6 @@ import (
 	"testing"
 
 	"github.com/samwooo/bolsa/logging"
-	"github.com/samwooo/bolsa/logging/model"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -21,7 +20,7 @@ var reduceIte = func(k interface{}, memo interface{}) (interface{}, error) {
 }
 
 func testReduceWithSingleError(t *testing.T) {
-	logging.DefaultLogger("", model.LogLevelFromString("INFO"), 100)
+	logging.DefaultLogger("", logging.LogLevelFrom("INFO"), 100)
 
 	input := []interface{}{1, 2, 3, 4, 5, 6, 7, 8, "abc"}
 	memo := 0
@@ -31,7 +30,7 @@ func testReduceWithSingleError(t *testing.T) {
 }
 
 func testReduceWithMultipleError(t *testing.T) {
-	logging.DefaultLogger("", model.LogLevelFromString("INFO"), 100)
+	logging.DefaultLogger("", logging.LogLevelFrom("INFO"), 100)
 
 	input := []interface{}{
 		1, 2, 3, 4, 5, 6, 7, 8,
@@ -50,7 +49,7 @@ func testReduceWithMultipleError(t *testing.T) {
 }
 
 func testReduceWithoutError(t *testing.T) {
-	logging.DefaultLogger("", model.LogLevelFromString("INFO"), 100)
+	logging.DefaultLogger("", logging.LogLevelFrom("INFO"), 100)
 
 	input := []interface{}{1, 2, 3, 4, 5, 6, 7, 8}
 	memo := 0

@@ -12,11 +12,10 @@ import (
 	"github.com/samwooo/bolsa/job/feeder"
 	"github.com/samwooo/bolsa/job/model"
 	"github.com/samwooo/bolsa/logging"
-	logModel "github.com/samwooo/bolsa/logging/model"
 	"github.com/stretchr/testify/assert"
 )
 
-var _ = logging.DefaultLogger("", logModel.LogLevelFromString("ERROR"), 100)
+var _ = logging.DefaultLogger("", logging.LogLevelFrom("ERROR"), 100)
 
 type laborWithError struct{}
 

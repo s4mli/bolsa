@@ -2,7 +2,6 @@ package model
 
 import (
 	"fmt"
-	"strings"
 )
 
 type LogLevel int
@@ -13,21 +12,6 @@ const (
 	WARN
 	ERROR
 )
-
-func LogLevelFromString(s string) LogLevel {
-	switch strings.ToLower(s) {
-	case "debug":
-		return DEBUG
-	case "info":
-		return INFO
-	case "warn":
-		return WARN
-	case "error":
-		return ERROR
-	default:
-		return INFO
-	}
-}
 
 func (l LogLevel) String() string {
 	switch l {

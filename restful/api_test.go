@@ -12,7 +12,6 @@ import (
 	"testing"
 
 	"github.com/samwooo/bolsa/logging"
-	"github.com/samwooo/bolsa/logging/model"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -20,7 +19,7 @@ const (
 	TestEndpoint = "/test"
 )
 
-var _ = logging.DefaultLogger("", model.LogLevelFromString("ERROR"), 100)
+var _ = logging.DefaultLogger("", logging.LogLevelFrom("ERROR"), 100)
 
 func ensureServerIsRunning(r interface{}) *httptest.Server {
 	return httptest.NewServer(NewAPI(context.Background()).RegisterResource(r,

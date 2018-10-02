@@ -10,11 +10,10 @@ import (
 	"github.com/samwooo/bolsa/job/feeder"
 	"github.com/samwooo/bolsa/job/model"
 	"github.com/samwooo/bolsa/logging"
-	logModel "github.com/samwooo/bolsa/logging/model"
 	"github.com/stretchr/testify/assert"
 )
 
-var _ = logging.DefaultLogger("", logModel.LogLevelFromString("ERROR"), 100)
+var _ = logging.DefaultLogger("", logging.LogLevelFrom("ERROR"), 100)
 
 func testWithNWorker(t *testing.T, workers int, noDrama, usingContext bool) {
 	data := []interface{}{0, 1, 2, 3, 4, 5, 6, 7, 8, 9}
