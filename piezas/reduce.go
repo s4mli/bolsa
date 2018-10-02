@@ -11,7 +11,6 @@ import (
 	"github.com/samwooo/bolsa/job"
 	"github.com/samwooo/bolsa/job/feeder"
 	"github.com/samwooo/bolsa/job/model"
-	"github.com/samwooo/bolsa/logging"
 )
 
 type reduceJ struct {
@@ -39,12 +38,12 @@ func (myself *reduceJ) Work(p interface{}) (r interface{}, e error) {
 	return myself.memo, common.ErrorFromString(strings.Join(reasons, " | "))
 }
 
-func Reduce(ctx context.Context, logger logging.Logger, data []interface{}, memo interface{},
+func Reduce(ctx context.Context, data []interface{}, memo interface{},
 	iterator func(interface{}, interface{}) (interface{}, error)) (m interface{}, e error) {
 
 	start := time.Now()
-	f := feeder.NewDataFeeder(ctx, logger, runtime.NumCPU(), data, 0, true)
-	reduce := &reduceJ{job.NewJob(logger, "Reduce", 1, f), memo, iterator}
+	f := feeder.NewDataFeeder(ctx, "ReduceFeeder", runtime.NumCPU(), data, 0, true)
+	reduce := &reduceJ{job.NewJob("Reduce", 1, f), memo, iterator}
 	r := reduce.SetLaborStrategy(reduce).Run()
 	reduce.Logger.Infof("done in %+v with %+v", time.Since(start), r)
 	r.Range(func(key, value interface{}) bool {

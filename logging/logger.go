@@ -11,8 +11,8 @@ import (
 
 type logger struct {
 	prefix  string
-	filters []model.Filter
-	handler model.Handler
+	filters []Filter
+	handler Handler
 }
 
 func (l *logger) Debug(msg interface{}) { l.message(model.DEBUG, msg) }
@@ -45,21 +45,21 @@ func (l *logger) message(lvl model.LogLevel, msg interface{}) {
 	}
 }
 
-func (l logger) GetChild(prefix string) model.Logger {
+func (l logger) GetChild(prefix string) Logger {
 	l.prefix = l.prefix + "➟" + prefix
 	return &l
 }
 
 var rootLogger = &logger{}
 
-func SetupLogger(prefix string, h model.Handler, f ...model.Filter) model.Logger {
+func SetupLogger(prefix string, h Handler, f ...Filter) Logger {
 	rootLogger.prefix = prefix
 	rootLogger.handler = h
 	rootLogger.filters = append(rootLogger.filters, f...)
 	return rootLogger
 }
 
-func DefaultLogger(prefix string, lvl model.LogLevel, metricThreshold int32) model.Logger {
+func DefaultLogger(prefix string, lvl model.LogLevel, metricThreshold int32) Logger {
 	return SetupLogger(
 		prefix,
 		handler.NewStdoutHandler(),
@@ -67,4 +67,4 @@ func DefaultLogger(prefix string, lvl model.LogLevel, metricThreshold int32) mod
 		filter.NewMetricsFilter(metricThreshold))
 }
 
-func GetLogger(prefix string) model.Logger { return rootLogger.GetChild(prefix) }
+func GetLogger(prefix string) Logger { return rootLogger.GetChild(prefix) }

@@ -10,10 +10,11 @@ import (
 	"github.com/samwooo/bolsa/job/feeder"
 	"github.com/samwooo/bolsa/job/model"
 	"github.com/samwooo/bolsa/logging"
+	logModel "github.com/samwooo/bolsa/logging/model"
 	"github.com/stretchr/testify/assert"
 )
 
-var _ = logging.DefaultLogger("", logging.LogLevelFromString("ERROR"), 100)
+var _ = logging.DefaultLogger("", logModel.LogLevelFromString("ERROR"), 100)
 
 func testWithNWorker(t *testing.T, workers int, noDrama, usingContext bool) {
 	data := []interface{}{0, 1, 2, 3, 4, 5, 6, 7, 8, 9}
@@ -23,7 +24,7 @@ func testWithNWorker(t *testing.T, workers int, noDrama, usingContext bool) {
 		ctx, cancelFn = context.WithDeadline(context.Background(), time.Now().Add(time.Millisecond*200))
 		defer cancelFn()
 	}
-	f := feeder.NewDataFeeder(ctx, logging.GetLogger(""), runtime.NumCPU(), data, 1, noDrama)
+	f := feeder.NewDataFeeder(ctx, "", runtime.NumCPU(), data, 1, noDrama)
 	if !usingContext {
 		time.AfterFunc(time.Millisecond*200, func() { f.Close() })
 	}

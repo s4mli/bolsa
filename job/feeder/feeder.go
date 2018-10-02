@@ -92,11 +92,11 @@ func newFeeder(ctx context.Context, logger logging.Logger, workers int, RIPRight
 		initClosed(), f}
 	common.TerminateIf(ctx,
 		func() {
-			jf.logger.Infof("⏳ cancellation, feeder %s quiting...", jf.Name())
+			jf.logger.Infof("cancellation, %s terminated", jf.Name())
 			jf.Close()
 		},
 		func(s os.Signal) {
-			jf.logger.Infof("⏳ signal ( %+v ) feeder %s quiting...", s, jf.Name())
+			jf.logger.Infof("signal ( %+v ), %s terminated", s, jf.Name())
 			jf.Close()
 		})
 
@@ -151,12 +151,14 @@ func newFeeder(ctx context.Context, logger logging.Logger, workers int, RIPRight
 	return &jf
 }
 
-func NewWorkFeeder(ctx context.Context, logger logging.Logger, workers int, init imp.Init, work imp.Work,
+func NewWorkFeeder(ctx context.Context, name string, workers int, init imp.Init, work imp.Work,
 	labor model.Labor, exit imp.Exit) *Feeder {
-	return newFeeder(ctx, logger, workers, false, imp.NewWorkFeederImp(init, work, labor, exit))
+	return newFeeder(ctx, logging.GetLogger(" "+name+" "), workers, false,
+		imp.NewWorkFeederImp(init, work, labor, exit))
 }
 
-func NewDataFeeder(ctx context.Context, logger logging.Logger, workers int, data []interface{}, batch int,
+func NewDataFeeder(ctx context.Context, name string, workers int, data []interface{}, batch int,
 	RIPRightAfterInit bool) *Feeder {
-	return newFeeder(ctx, logger, workers, RIPRightAfterInit, imp.NewDataFeederImp(data, batch))
+	return newFeeder(ctx, logging.GetLogger(" "+name+" "), workers, RIPRightAfterInit,
+		imp.NewDataFeederImp(data, batch))
 }

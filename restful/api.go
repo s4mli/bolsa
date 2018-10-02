@@ -144,29 +144,28 @@ func (api *API) RegisterResource(resource interface{}, paths ...string) *API {
 func (api *API) ServeHTTP(w http.ResponseWriter, r *http.Request) { api.mux.ServeHTTP(w, r) }
 func (api *API) Start(port int) {
 	server := http.Server{Addr: fmt.Sprintf(":%d", port), Handler: api}
-	shutdown := func() {
-		if err := server.Shutdown(api.ctx); err != nil {
-			api.logger.Errorf("shutdown failed: %s", err.Error())
-		} else {
-			api.logger.Info("stopped")
-		}
-	}
 	common.TerminateIf(api.ctx,
 		func() {
-			api.logger.Info("⏳ cancellation, server is quiting...")
-			shutdown()
+			if err := server.Shutdown(api.ctx); err != nil {
+				api.logger.Errorf("cancellation, shutdown failed: %s", err.Error())
+			} else {
+				api.logger.Errorf("cancellation, terminated")
+			}
 		},
 		func(s os.Signal) {
-			api.logger.Infof("⏳ signal ( %+v ) server is quiting...", s)
-			shutdown()
+			if err := server.Shutdown(api.ctx); err != nil {
+				api.logger.Errorf("signal ( %+v ), shutdown failed: %s", s, err.Error())
+			} else {
+				api.logger.Infof("signal ( %+v ), terminated", s)
+			}
 		})
 
-	api.logger.Infof("listening on 0.0.0.0:%d", port)
+	api.logger.Infof("listening on :%d", port)
 	if err := server.ListenAndServe(); err != http.ErrServerClosed {
-		api.logger.Errorf("start error: ", err.Error())
+		api.logger.Errorf("start failed: ", err.Error())
 	}
 }
 
-func NewAPI(ctx context.Context, logger logging.Logger) *API {
-	return &API{ctx, logger, http.NewServeMux()}
+func NewAPI(ctx context.Context) *API {
+	return &API{ctx, logging.GetLogger(" ⓡ "), http.NewServeMux()}
 }

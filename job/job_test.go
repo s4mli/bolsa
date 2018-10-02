@@ -12,10 +12,11 @@ import (
 	"github.com/samwooo/bolsa/job/feeder"
 	"github.com/samwooo/bolsa/job/model"
 	"github.com/samwooo/bolsa/logging"
+	logModel "github.com/samwooo/bolsa/logging/model"
 	"github.com/stretchr/testify/assert"
 )
 
-var _ = logging.DefaultLogger("", logging.LogLevelFromString("ERROR"), 100)
+var _ = logging.DefaultLogger("", logModel.LogLevelFromString("ERROR"), 100)
 
 type laborWithError struct{}
 
@@ -44,19 +45,14 @@ func newJobTester(as model.LaborStrategy, with []interface{}, batch, maxRetry in
 		ctx, cancelFn = context.WithCancel(context.Background())
 		time.AfterFunc(time.Millisecond*500, func() { cancelFn() })
 	}
-	jt := &JobTester{NewJob(logging.GetLogger(""), "", runtime.NumCPU(),
-		feeder.NewDataFeeder(ctx, logging.GetLogger(""), runtime.NumCPU(), with,
+	jt := &JobTester{NewJob("", runtime.NumCPU(),
+		feeder.NewDataFeeder(ctx, "", runtime.NumCPU(), with,
 			batch, false)), maxRetry}
 	jt.SetLaborStrategy(as).SetRetryStrategy(jt)
 	if !usingContext {
 		time.AfterFunc(time.Millisecond*500, func() { jt.Close() })
 	}
 	return jt
-}
-
-func TestJobWithoutFeeder(t *testing.T) {
-	j := NewJob(logging.GetLogger(""), "", 0, nil)
-	assert.Equal(t, (*Job)(nil), j)
 }
 
 func testJobWithNoLaborNoRetry(t *testing.T, flag bool) {
@@ -264,8 +260,8 @@ func (rh *retryHook) Worth(model.Done) bool { return false }
 func (rh *retryHook) Limit() int            { return 3 }
 func TestJobItselfWithNoRetry(t *testing.T) {
 	with := []interface{}{1, 2, 3, 4, 5, 6, 7, 8}
-	jt := &JobTester{NewJob(logging.GetLogger(""), "", runtime.NumCPU(),
-		feeder.NewDataFeeder(context.Background(), logging.GetLogger(""), runtime.NumCPU(), with,
+	jt := &JobTester{NewJob("", runtime.NumCPU(),
+		feeder.NewDataFeeder(context.Background(), "", runtime.NumCPU(), with,
 			1, false)), 3}
 	jt.SetLaborStrategy(jt).SetRetryStrategy(&retryHook{})
 	time.AfterFunc(time.Millisecond*500, func() { jt.Close() })
@@ -313,8 +309,8 @@ func testBlindlyRetryJob(t *testing.T, flag bool) {
 			time.Duration(time.Millisecond*500)))
 		defer cancelFn()
 	}
-	brj := &blindlyRetryJob{NewJob(logging.GetLogger(""), "", runtime.NumCPU(),
-		feeder.NewDataFeeder(ctx, logging.GetLogger(""), runtime.NumCPU(), with, 1, false)),
+	brj := &blindlyRetryJob{NewJob("", runtime.NumCPU(),
+		feeder.NewDataFeeder(ctx, "", runtime.NumCPU(), with, 1, false)),
 		3}
 	brj.SetLaborStrategy(brj).SetRetryStrategy(brj)
 	if !flag {
@@ -345,8 +341,8 @@ func TestBlindlyRetryJobWithDeadline(t *testing.T) {
 
 func testJobWithAdditionalPush(t *testing.T, batch int, data interface{}) {
 	with := []interface{}{1, 2, 3, 4, 5, 6, 7, 8, 9}
-	jt := &JobTester{NewJob(logging.GetLogger(""), "", runtime.NumCPU(),
-		feeder.NewDataFeeder(context.Background(), logging.GetLogger(""), runtime.NumCPU(), with,
+	jt := &JobTester{NewJob("", runtime.NumCPU(),
+		feeder.NewDataFeeder(context.Background(), "", runtime.NumCPU(), with,
 			batch, false)), 3}
 	jt.SetLaborStrategy(&laborWithoutError{}).SetRetryStrategy(jt)
 

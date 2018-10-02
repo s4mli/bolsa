@@ -6,11 +6,12 @@ import (
 	"testing"
 
 	"github.com/samwooo/bolsa/logging"
+	"github.com/samwooo/bolsa/logging/model"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestWaterfallWithError(t *testing.T) {
-	logging.DefaultLogger("", logging.LogLevelFromString("INFO"), 100)
+	logging.DefaultLogger("", model.LogLevelFromString("INFO"), 100)
 
 	r := Waterfall(logging.GetLogger("waterfall test "), tasks{
 		func(a ...int) (int, int, error) {
@@ -32,7 +33,7 @@ func TestWaterfallWithError(t *testing.T) {
 }
 
 func TestWaterfallWithVariadicParas(t *testing.T) {
-	logging.DefaultLogger("", logging.LogLevelFromString("INFO"), 100)
+	logging.DefaultLogger("", model.LogLevelFromString("INFO"), 100)
 
 	r := Waterfall(logging.GetLogger("waterfall test "), tasks{
 		func(a ...int) (int, int, error) {
@@ -55,7 +56,7 @@ func TestWaterfallWithVariadicParas(t *testing.T) {
 }
 
 func TestWaterfallWithFixedParas(t *testing.T) {
-	logging.DefaultLogger("", logging.LogLevelFromString("INFO"), 100)
+	logging.DefaultLogger("", model.LogLevelFromString("INFO"), 100)
 
 	r := Waterfall(logging.GetLogger("waterfall test "), tasks{
 		func(a int) (int, string, error) {
@@ -72,7 +73,7 @@ func TestWaterfallWithFixedParas(t *testing.T) {
 }
 
 func TestWaterfallWithCombination(t *testing.T) {
-	logging.DefaultLogger("", logging.LogLevelFromString("INFO"), 100)
+	logging.DefaultLogger("", model.LogLevelFromString("INFO"), 100)
 	logger := logging.GetLogger("waterfall test ")
 
 	r := Waterfall(logger, tasks{

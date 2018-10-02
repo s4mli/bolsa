@@ -7,14 +7,14 @@ import (
 
 	"github.com/samwooo/bolsa/job/model"
 	"github.com/samwooo/bolsa/logging"
+	logModel "github.com/samwooo/bolsa/logging/model"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestEach(t *testing.T) {
-	logging.DefaultLogger("", logging.LogLevelFromString("ERROR"), 100)
+	logging.DefaultLogger("", logModel.LogLevelFromString("ERROR"), 100)
 	input := []interface{}{1, 2, 3, 4, 5, 6, 7, 8, "abc"}
-	r := Each(context.Background(), logging.GetLogger(""),
-		input,
+	r := Each(context.Background(), input,
 		func(k interface{}) (interface{}, error) {
 			if v, ok := k.(int); ok {
 				return v * 2, nil

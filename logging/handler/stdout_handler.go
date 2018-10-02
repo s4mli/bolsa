@@ -24,6 +24,6 @@ func (h *stdoutHandler) Emit(lvl model.LogLevel, prefix string, msg interface{})
 	}
 }
 
-func NewStdoutHandler() model.Handler {
+func NewStdoutHandler() *stdoutHandler {
 	return &stdoutHandler{log.New(os.Stdout, "", log.LstdFlags)}
 }

@@ -172,15 +172,14 @@ func (j *Job) Run() *sync.Map {
 	}
 }
 
-func NewJob(logger logging.Logger, name string, workers int, feeder *feeder.Feeder) *Job {
+func NewJob(name string, workers int, feeder *feeder.Feeder) *Job {
 	if workers <= 0 {
 		workers = runtime.NumCPU() * 64
 	}
 	if feeder == nil {
-		logger.Error("unable to initialise a job without a feeder!")
-		return nil
+		panic("unable to initialise a job without a feeder!")
 	} else {
-		return &Job{logger, name, workers,
-			feeder, nil, nil}
+		return &Job{logging.GetLogger(" " + name + " "), name, workers, feeder,
+			nil, nil}
 	}
 }

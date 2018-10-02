@@ -33,12 +33,12 @@ func (c *Consumer) Close() { c.ready.Store(false) }
 func (c *Consumer) Run() {
 	common.TerminateIf(c.ctx,
 		func() {
-			c.logger.Infof("⏳ cancellation, consumer ( ...%s ) quiting...", c.qUrl[int(math.Max(
+			c.logger.Infof("cancellation, ( ...%s ) terminated", c.qUrl[int(math.Max(
 				float64(len(c.qUrl)-9), float64(0))):])
 			c.Close()
 		},
 		func(s os.Signal) {
-			c.logger.Infof("⏳ signal ( %+v ) consumer ( ...%s ) quiting...", s, c.qUrl[int(math.Max(
+			c.logger.Infof("signal ( %+v ), ( ...%s ) terminated", s, c.qUrl[int(math.Max(
 				float64(len(c.qUrl)-9), float64(0))):])
 			c.Close()
 		})
@@ -52,10 +52,10 @@ func (c *Consumer) Run() {
 	}
 }
 
-func NewConsumer(ctx context.Context, logger logging.Logger, qRegion, qUrl string, qWait int64, qWorkers int,
+func NewConsumer(ctx context.Context, qRegion, qUrl string, qWait int64, qWorkers int,
 	handler MessageHandler) *Consumer {
-	c := &Consumer{ctx: ctx, logger: logger, qUrl: qUrl, qWait: qWait, qWorkers: qWorkers, handler: handler,
-		ready: atomic.Value{}}
+	c := &Consumer{ctx: ctx, logger: logging.GetLogger(" ⓠ "), qUrl: qUrl, qWait: qWait, qWorkers: qWorkers,
+		handler: handler, ready: atomic.Value{}}
 	c.connect(qRegion)
 	return c
 }

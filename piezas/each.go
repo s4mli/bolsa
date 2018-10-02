@@ -8,7 +8,6 @@ import (
 
 	"github.com/samwooo/bolsa/job"
 	"github.com/samwooo/bolsa/job/feeder"
-	"github.com/samwooo/bolsa/logging"
 )
 
 type eachJ struct {
@@ -24,11 +23,10 @@ func (myself *eachJ) Work(p interface{}) (r interface{}, e error) {
 	}
 }
 
-func Each(ctx context.Context, logger logging.Logger, data []interface{},
-	ite func(interface{}) (interface{}, error)) *sync.Map {
+func Each(ctx context.Context, data []interface{}, ite func(interface{}) (interface{}, error)) *sync.Map {
 	start := time.Now()
-	f := feeder.NewDataFeeder(ctx, logger, runtime.NumCPU(), data, 1, true)
-	e := &eachJ{job.NewJob(logger, "Each", 0, f), ite}
+	f := feeder.NewDataFeeder(ctx, "EachFeeder", runtime.NumCPU(), data, 1, true)
+	e := &eachJ{job.NewJob("Each", 0, f), ite}
 	done := e.SetLaborStrategy(e).Run()
 	e.Logger.Infof("done in %+v with %+v", time.Since(start), done)
 	return done

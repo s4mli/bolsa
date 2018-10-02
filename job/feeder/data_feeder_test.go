@@ -7,7 +7,6 @@ import (
 	"time"
 
 	"github.com/samwooo/bolsa/common"
-	"github.com/samwooo/bolsa/logging"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -20,7 +19,7 @@ func testWithInSingleGoroutine(t *testing.T, noDrama, usingContext bool, batch i
 			time.Duration(len(data)*20)*time.Millisecond))
 		defer cancelFn()
 	}
-	f := NewDataFeeder(ctx, logging.GetLogger(""), runtime.NumCPU(), data, batch, noDrama)
+	f := NewDataFeeder(ctx, "", runtime.NumCPU(), data, batch, noDrama)
 	if !usingContext {
 		time.AfterFunc(time.Duration(len(data)*20)*time.Millisecond, func() { f.Close() })
 	}
@@ -67,7 +66,7 @@ func testWithinMultipleGoroutines(t *testing.T, noDrama, usingContext bool, batc
 			time.Duration(len(data)*20)*time.Millisecond))
 		defer cancelFn()
 	}
-	f := NewDataFeeder(ctx, logging.GetLogger(""), runtime.NumCPU(), data, batch, noDrama)
+	f := NewDataFeeder(ctx, "", runtime.NumCPU(), data, batch, noDrama)
 	if !usingContext {
 		time.AfterFunc(time.Duration(len(data)*20)*time.Millisecond, func() { f.Close() })
 	}

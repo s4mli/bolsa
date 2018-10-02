@@ -8,7 +8,6 @@ import (
 	"github.com/samwooo/bolsa/job"
 	"github.com/samwooo/bolsa/job/feeder"
 	"github.com/samwooo/bolsa/job/model"
-	"github.com/samwooo/bolsa/logging"
 )
 
 type everyJ struct {
@@ -24,12 +23,10 @@ func (myself *everyJ) Work(p interface{}) (r interface{}, e error) {
 	}
 }
 
-func Every(ctx context.Context, logger logging.Logger, data []interface{},
-	iterator func(interface{}) (bool, error)) bool {
-
+func Every(ctx context.Context, data []interface{}, iterator func(interface{}) (bool, error)) bool {
 	start := time.Now()
-	f := feeder.NewDataFeeder(ctx, logger, runtime.NumCPU(), data, 1, true)
-	e := &everyJ{job.NewJob(logger, "every", 0, f), iterator}
+	f := feeder.NewDataFeeder(ctx, "EveryFeeder", runtime.NumCPU(), data, 1, true)
+	e := &everyJ{job.NewJob("Every", 0, f), iterator}
 	r := e.SetLaborStrategy(e).Run()
 	e.Logger.Infof("done in %+v with %+v", time.Since(start), r)
 	pass := true

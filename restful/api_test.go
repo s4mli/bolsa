@@ -2,6 +2,7 @@ package restful
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
@@ -10,9 +11,8 @@ import (
 	"strings"
 	"testing"
 
-	"context"
-
 	"github.com/samwooo/bolsa/logging"
+	"github.com/samwooo/bolsa/logging/model"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -20,10 +20,10 @@ const (
 	TestEndpoint = "/test"
 )
 
-var _ = logging.DefaultLogger("", logging.LogLevelFromString("ERROR"), 100)
+var _ = logging.DefaultLogger("", model.LogLevelFromString("ERROR"), 100)
 
 func ensureServerIsRunning(r interface{}) *httptest.Server {
-	return httptest.NewServer(NewAPI(context.Background(), logging.GetLogger("")).RegisterResource(r,
+	return httptest.NewServer(NewAPI(context.Background()).RegisterResource(r,
 		TestEndpoint))
 }
 

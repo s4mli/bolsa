@@ -8,7 +8,6 @@ import (
 	"github.com/samwooo/bolsa/job"
 	"github.com/samwooo/bolsa/job/feeder"
 	"github.com/samwooo/bolsa/job/model"
-	"github.com/samwooo/bolsa/logging"
 )
 
 type filterJ struct {
@@ -24,12 +23,10 @@ func (myself *filterJ) Work(p interface{}) (r interface{}, e error) {
 	}
 }
 
-func Filter(ctx context.Context, logger logging.Logger, data []interface{},
-	iterator func(interface{}) (bool, error)) []interface{} {
-
+func Filter(ctx context.Context, data []interface{}, iterator func(interface{}) (bool, error)) []interface{} {
 	start := time.Now()
-	f := feeder.NewDataFeeder(ctx, logger, runtime.NumCPU(), data, 1, true)
-	filter := &filterJ{job.NewJob(logger, "Filter", 0, f), iterator}
+	f := feeder.NewDataFeeder(ctx, "FilterFeeder", runtime.NumCPU(), data, 1, true)
+	filter := &filterJ{job.NewJob("Filter", 0, f), iterator}
 	r := filter.SetLaborStrategy(filter).Run()
 	filter.Logger.Infof("done in %+v with %+v", time.Since(start), r)
 	var result []interface{}

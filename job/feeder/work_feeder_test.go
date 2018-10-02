@@ -10,10 +10,11 @@ import (
 
 	"github.com/samwooo/bolsa/job/model"
 	"github.com/samwooo/bolsa/logging"
+	logModel "github.com/samwooo/bolsa/logging/model"
 	"github.com/stretchr/testify/assert"
 )
 
-var _ = logging.DefaultLogger("", logging.LogLevelFromString("ERROR"), 100)
+var _ = logging.DefaultLogger("", logModel.LogLevelFromString("ERROR"), 100)
 
 var COUNTER uint64 = 0
 
@@ -41,7 +42,7 @@ func testWithSingleGoroutineWithoutError(t *testing.T, usingContext bool) {
 			time.Duration(200)*time.Millisecond))
 		defer cancelFn()
 	}
-	f := NewWorkFeeder(ctx, logging.GetLogger(""), runtime.NumCPU(), nil, work, withoutError, nil)
+	f := NewWorkFeeder(ctx, "", runtime.NumCPU(), nil, work, withoutError, nil)
 	if !usingContext {
 		time.AfterFunc(time.Duration(200)*time.Millisecond, func() { f.Close() })
 	}
@@ -68,7 +69,7 @@ func testWithSingleGoroutineWithError(t *testing.T, usingContext bool) {
 			time.Duration(200)*time.Millisecond))
 		defer cancelFn()
 	}
-	f := NewWorkFeeder(ctx, logging.GetLogger(""), runtime.NumCPU(), nil, work, withError, nil)
+	f := NewWorkFeeder(ctx, "", runtime.NumCPU(), nil, work, withError, nil)
 	if !usingContext {
 		time.AfterFunc(time.Duration(200)*time.Millisecond, func() { f.Close() })
 	}
@@ -92,7 +93,7 @@ func testWithMultipleGoroutinesWithoutError(t *testing.T, usingContext bool) {
 			time.Duration(200)*time.Millisecond))
 		defer cancelFn()
 	}
-	f := NewWorkFeeder(ctx, logging.GetLogger(""), runtime.NumCPU(), nil, work, withoutError, nil)
+	f := NewWorkFeeder(ctx, "", runtime.NumCPU(), nil, work, withoutError, nil)
 	if !usingContext {
 		time.AfterFunc(time.Duration(200)*time.Millisecond, func() { f.Close() })
 	}
@@ -132,7 +133,7 @@ func testWithMultipleGoroutinesWithError(t *testing.T, usingContext bool) {
 			time.Duration(200)*time.Millisecond))
 		defer cancelFn()
 	}
-	f := NewWorkFeeder(ctx, logging.GetLogger(""), runtime.NumCPU(), nil, work, withError, nil)
+	f := NewWorkFeeder(ctx, "", runtime.NumCPU(), nil, work, withError, nil)
 	if !usingContext {
 		time.AfterFunc(time.Duration(200)*time.Millisecond, func() { f.Close() })
 	}

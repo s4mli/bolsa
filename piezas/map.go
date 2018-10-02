@@ -8,7 +8,6 @@ import (
 	"github.com/samwooo/bolsa/job"
 	"github.com/samwooo/bolsa/job/feeder"
 	"github.com/samwooo/bolsa/job/model"
-	"github.com/samwooo/bolsa/logging"
 )
 
 type mapJ struct {
@@ -24,12 +23,11 @@ func (myself *mapJ) Work(p interface{}) (r interface{}, e error) {
 	}
 }
 
-func Map(ctx context.Context, logger logging.Logger, data []interface{},
-	iterator func(interface{}) (interface{}, error)) []interface{} {
+func Map(ctx context.Context, data []interface{}, iterator func(interface{}) (interface{}, error)) []interface{} {
 
 	start := time.Now()
-	f := feeder.NewDataFeeder(ctx, logger, runtime.NumCPU(), data, 1, true)
-	e := &mapJ{job.NewJob(logger, "Map", 0, f), iterator}
+	f := feeder.NewDataFeeder(ctx, "MapFeeder", runtime.NumCPU(), data, 1, true)
+	e := &mapJ{job.NewJob("Map", 0, f), iterator}
 	r := e.SetLaborStrategy(e).Run()
 	e.Logger.Infof("done in %+v with %+v", time.Since(start), r)
 	var result []interface{}

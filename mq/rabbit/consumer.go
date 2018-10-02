@@ -75,10 +75,10 @@ func (c *consumer) run(conn *Connection) {
 	}(connected, reconnecting, closed)
 }
 
-func newConsumer(id int, logger logging.Logger, qName string, prefetchCount, prefetchSize int,
+func newConsumer(id int, qName string, prefetchCount, prefetchSize int,
 	handler MessageHandler) *consumer {
-	return &consumer{id, logger, nil, qName, prefetchCount, prefetchSize,
-		handler}
+	return &consumer{id, logging.GetLogger(" ⓠ " + qName + " "), nil, qName,
+		prefetchCount, prefetchSize, handler}
 }
 
 //////////////////////////////////
@@ -93,8 +93,9 @@ type retryableConsumer struct {
 	limit int
 }
 
-func newRetryableConsumer(id int, logger logging.Logger, qName string, prefetchCount, prefetchSize int,
-	handler MessageHandler, limit int) *retryableConsumer {
+func newRetryableConsumer(id int, qName string, prefetchCount, prefetchSize int, handler MessageHandler,
+	limit int) *retryableConsumer {
+	logger := logging.GetLogger(" ⓠ " + qName + " ")
 	retryableHandler := func() MessageHandler {
 		return func(headers amqp.Table, body []byte) error {
 			if xDeaths, ok := headers["x-death"]; ok {
@@ -113,6 +114,5 @@ func newRetryableConsumer(id int, logger logging.Logger, qName string, prefetchC
 		}
 	}
 	return &retryableConsumer{
-		newConsumer(id, logger, qName, prefetchCount, prefetchSize, retryableHandler()),
-		limit}
+		newConsumer(id, qName, prefetchCount, prefetchSize, retryableHandler()), limit}
 }

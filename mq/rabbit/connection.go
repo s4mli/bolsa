@@ -103,10 +103,10 @@ func (c *Connection) register(observer) (connected, reconnect, closed chan struc
 	return
 }
 
-func NewConnection(ctx context.Context, logger logging.Logger, qUser, qPassword, qUri string) *Connection {
+func NewConnection(ctx context.Context, qUser, qPassword, qUri string) *Connection {
 	c := &Connection{
 		ctx:       ctx,
-		logger:    logger,
+		logger:    logging.GetLogger(" ⓠ "),
 		qConn:     nil,
 		qUser:     qUser,
 		qPassword: qPassword,
@@ -116,10 +116,10 @@ func NewConnection(ctx context.Context, logger logging.Logger, qUser, qPassword,
 	common.TerminateIf(c.ctx,
 		func() {
 			c.stop()
-			logger.Infof("cancellation, ( %s ) connection closed", c.qUri)
+			c.logger.Infof("cancellation, ( %s ) closed", c.qUri)
 		},
 		func(s os.Signal) {
-			logger.Infof("signal ( %+v ), ( %s ) connection closed", s, c.qUri)
+			c.logger.Infof("signal ( %+v ), ( %s ) closed", s, c.qUri)
 			c.stop()
 		})
 	return c

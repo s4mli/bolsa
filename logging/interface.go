@@ -1,7 +1,9 @@
-package model
+package logging
 
 import (
 	"time"
+
+	"github.com/samwooo/bolsa/logging/model"
 )
 
 type Logger interface {
@@ -20,9 +22,9 @@ type Logger interface {
 }
 
 type Filter interface {
-	WorthEmit(LogLevel, interface{}) (bool, interface{})
+	WorthEmit(model.LogLevel, interface{}) (bool, interface{})
 }
 
 type Handler interface {
-	Emit(LogLevel, string, interface{})
+	Emit(model.LogLevel, string, interface{})
 }

@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/samwooo/bolsa/logging"
+	"github.com/samwooo/bolsa/logging/model"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -20,17 +21,17 @@ var reduceIte = func(k interface{}, memo interface{}) (interface{}, error) {
 }
 
 func testReduceWithSingleError(t *testing.T) {
-	logging.DefaultLogger("", logging.LogLevelFromString("INFO"), 100)
+	logging.DefaultLogger("", model.LogLevelFromString("INFO"), 100)
 
 	input := []interface{}{1, 2, 3, 4, 5, 6, 7, 8, "abc"}
 	memo := 0
-	r, err := Reduce(context.Background(), logging.GetLogger("test "), input, memo, reduceIte)
+	r, err := Reduce(context.Background(), input, memo, reduceIte)
 	assert.Equal(t, 36, r)
 	assert.Equal(t, "✗ labor failed ( [1 2 3 4 5 6 7 8 abc], cast abc error )", err.Error())
 }
 
 func testReduceWithMultipleError(t *testing.T) {
-	logging.DefaultLogger("", logging.LogLevelFromString("INFO"), 100)
+	logging.DefaultLogger("", model.LogLevelFromString("INFO"), 100)
 
 	input := []interface{}{
 		1, 2, 3, 4, 5, 6, 7, 8,
@@ -41,7 +42,7 @@ func testReduceWithMultipleError(t *testing.T) {
 		"ab", "bc", "cd",
 	}
 	memo := 0
-	r, err := Reduce(context.Background(), logging.GetLogger("test "), input, memo, reduceIte)
+	r, err := Reduce(context.Background(), input, memo, reduceIte)
 	assert.Equal(t, 180, r)
 	assert.Equal(t,
 		"✗ labor failed ( [1 2 3 4 5 6 7 8 1 2 3 4 5 6 7 8 1 2 3 4 5 6 7 8 1 2 3 4 5 6 7 8"+
@@ -49,11 +50,11 @@ func testReduceWithMultipleError(t *testing.T) {
 }
 
 func testReduceWithoutError(t *testing.T) {
-	logging.DefaultLogger("", logging.LogLevelFromString("INFO"), 100)
+	logging.DefaultLogger("", model.LogLevelFromString("INFO"), 100)
 
 	input := []interface{}{1, 2, 3, 4, 5, 6, 7, 8}
 	memo := 0
-	r, err := Reduce(context.Background(), logging.GetLogger("test "), input, memo, reduceIte)
+	r, err := Reduce(context.Background(), input, memo, reduceIte)
 	assert.Equal(t, 36, r)
 	assert.Equal(t, nil, err)
 }
