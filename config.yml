@@ -1,0 +1,11 @@
+stateMachine:
+  setup:
+    states:
+#      - name: relieve
+#        global: true
+      - name: idle
+#        script: idle.js
+    starts: idle
+
+
+
