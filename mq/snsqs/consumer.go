@@ -7,7 +7,7 @@ import (
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/sqs"
-	"github.com/samwooo/bolsa/cleaner"
+	"github.com/s4mli/bolsa/cleaner"
 	"github.com/sirupsen/logrus"
 )
 

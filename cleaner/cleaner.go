@@ -6,7 +6,7 @@ import (
 	"os"
 	"sync"
 
-	"github.com/samwooo/bolsa/common"
+	"github.com/s4mli/bolsa/common"
 	"github.com/sirupsen/logrus"
 )
 

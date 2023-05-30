@@ -3,7 +3,7 @@ package rabbit
 import (
 	"golang.org/x/net/context"
 
-	"github.com/samwooo/bolsa/cleaner"
+	"github.com/s4mli/bolsa/cleaner"
 )
 
 type Medium interface {

@@ -5,7 +5,7 @@ import (
 
 	_ "github.com/denisenkom/go-mssqldb"
 	"github.com/jmoiron/sqlx"
-	"github.com/samwooo/bolsa/cleaner"
+	"github.com/s4mli/bolsa/cleaner"
 )
 
 type MsSQL struct{ *helper }

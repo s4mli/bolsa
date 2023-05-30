@@ -3,7 +3,7 @@ package rabbit
 import (
 	"fmt"
 
-	"github.com/samwooo/bolsa/cleaner"
+	"github.com/s4mli/bolsa/cleaner"
 	"github.com/sirupsen/logrus"
 	"github.com/streadway/amqp"
 	"golang.org/x/net/context"

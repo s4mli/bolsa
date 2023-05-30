@@ -5,7 +5,7 @@ import (
 
 	_ "github.com/go-sql-driver/mysql"
 	"github.com/jmoiron/sqlx"
-	"github.com/samwooo/bolsa/cleaner"
+	"github.com/s4mli/bolsa/cleaner"
 )
 
 type MySQL struct{ *helper }
